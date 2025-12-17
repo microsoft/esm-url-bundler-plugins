@@ -1,0 +1,21 @@
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
+
+# Test temp directories (ejected files for debugging)
+tests/webpack/tmp/
+tests/rollup/tmp/
+tests/vite/tmp/
+tests/esbuild/tmp/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build artifacts
+*.tsbuildinfo
+test-results/
