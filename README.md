@@ -2,6 +2,8 @@
 
 Bundler plugins that preserve the semantics of `new URL('./file.js', import.meta.url)` after bundling.
 
+This library simplifies the distribution of libraries that use web workers, such as the [Monaco Editor](https://github.com/microsoft/monaco-editor). Note that the scope of this project is intentionally narrow — feature requests are unlikely to be addressed.
+
 ## The Problem
 
 In native ESM, this pattern works perfectly:
