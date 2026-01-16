@@ -1,0 +1,119 @@
+################################################################################
+#  Copyright (c) Microsoft Corporation. All rights reserved.
+#  Licensed under the MIT License. See License.txt in the project root for license information.
+################################################################################
+name: $(Date:yyyyMMdd)$(Rev:.r)
+
+trigger:
+  branches:
+    include:
+      - main
+pr: none
+
+resources:
+  repositories:
+    - repository: templates
+      type: github
+      name: microsoft/vscode-engineering
+      ref: main
+      endpoint: Monaco
+
+parameters:
+  - name: publishWebpackPlugin
+    displayName: 🚀 Publish Webpack Plugin
+    type: boolean
+    default: true
+  - name: publishRollupPlugin
+    displayName: 🚀 Publish Rollup Plugin
+    type: boolean
+    default: true
+  - name: publishEsbuildPlugin
+    displayName: 🚀 Publish esbuild Plugin
+    type: boolean
+    default: true
+
+extends:
+  template: azure-pipelines/npm-package/pipeline.yml@templates
+  parameters:
+    npmPackages:
+      - name: esm-url-webpack-plugin
+        workingDirectory: $(Build.SourcesDirectory)/packages/webpack
+        testPlatforms: []
+        buildSteps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: '20.x'
+
+          - script: npm ci
+            displayName: Install NPM dependencies
+            workingDirectory: $(Build.SourcesDirectory)
+
+          - script: npm run build
+            displayName: Build plugin
+            workingDirectory: $(Build.SourcesDirectory)/packages/webpack
+
+          - script: npm test -- --testPathPattern=tests/webpack
+            displayName: Run tests
+            workingDirectory: $(Build.SourcesDirectory)
+
+        tag: next
+        nextVersion: prerelease
+        ghCreateTag: false
+        publishPackage: ${{ parameters.publishWebpackPlugin }}
+        publishRequiresApproval: false
+
+      - name: rollup-plugin-esm-url
+        workingDirectory: $(Build.SourcesDirectory)/packages/rollup
+        testPlatforms: []
+        buildSteps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: '20.x'
+
+          - script: npm ci
+            displayName: Install NPM dependencies
+            workingDirectory: $(Build.SourcesDirectory)
+
+          - script: npm run build
+            displayName: Build plugin
+            workingDirectory: $(Build.SourcesDirectory)/packages/rollup
+
+          - script: npm test -- --testPathPattern=tests/rollup
+            displayName: Run Rollup tests
+            workingDirectory: $(Build.SourcesDirectory)
+
+          - script: npm test -- --testPathPattern=tests/vite
+            displayName: Run Vite tests
+            workingDirectory: $(Build.SourcesDirectory)
+
+        tag: next
+        nextVersion: prerelease
+        ghCreateTag: false
+        publishPackage: ${{ parameters.publishRollupPlugin }}
+        publishRequiresApproval: false
+
+      - name: esbuild-plugin-esm-url
+        workingDirectory: $(Build.SourcesDirectory)/packages/esbuild
+        testPlatforms: []
+        buildSteps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: '20.x'
+
+          - script: npm ci
+            displayName: Install NPM dependencies
+            workingDirectory: $(Build.SourcesDirectory)
+
+          - script: npm run build
+            displayName: Build plugin
+            workingDirectory: $(Build.SourcesDirectory)/packages/esbuild
+
+          - script: npm test -- --testPathPattern=tests/esbuild
+            displayName: Run tests
+            workingDirectory: $(Build.SourcesDirectory)
+
+        tag: next
+        nextVersion: prerelease
+        ghCreateTag: false
+        publishPackage: ${{ parameters.publishEsbuildPlugin }}
+        publishRequiresApproval: false
