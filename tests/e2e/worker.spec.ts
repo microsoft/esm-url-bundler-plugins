@@ -7,7 +7,7 @@ import { getTestOptionsFromMarkdown, isFixtureSupportedFor, Bundler } from '../s
 /** Marker string that workers output to indicate successful execution */
 const WORKER_OK_MARKER = '[WORKER_OK]';
 
-const bundlers: Bundler[] = ['webpack', 'rollup', 'vite', 'esbuild'];
+const bundlers: Bundler[] = ['webpack', 'rollup', 'vite', 'esbuild', 'parcel'];
 
 const fixturesDir = path.resolve(__dirname, '../../test-fixtures');
 

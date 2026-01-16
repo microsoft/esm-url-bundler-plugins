@@ -9,9 +9,10 @@
   "scripts": {
     "build": "npm run build --workspaces",
     "test": "jest",
-    "test:webpack": "jest --testPathPattern=tests/webpack",
-    "test:rollup": "jest --testPathPattern=tests/rollup",
-    "test:vite": "jest --testPathPattern=tests/vite",
+    "test:webpack": "jest --testPathPatterns=tests/webpack",
+    "test:rollup": "jest --testPathPatterns=tests/rollup",
+    "test:vite": "jest --testPathPatterns=tests/vite",
+    "test:parcel": "jest --testPathPatterns=tests/parcel",
     "test:e2e": "playwright test",
     "lint": "eslint packages/*/src/**/*.ts",
     "format": "prettier --write packages/*/src/**/*.ts"
@@ -20,6 +21,7 @@
     "webpack",
     "rollup",
     "vite",
+    "parcel",
     "plugin",
     "worker",
     "esm",
@@ -29,6 +31,8 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@parcel/config-default": "^2.15.0",
+    "@parcel/core": "^2.15.0",
     "@playwright/test": "^1.57.0",
     "@rollup/plugin-node-resolve": "^16.0.0",
     "@rollup/plugin-typescript": "^12.0.0",

@@ -116,6 +116,11 @@ new URL('./worker.js', import.meta.url)
 | `@vscode/rollup-plugin-esm-url` | Rollup | ✅ Available |
 | `@vscode/rollup-plugin-esm-url` | Vite | ✅ Available (uses Rollup plugin) |
 | `@vscode/esbuild-plugin-esm-url` | esbuild | ✅ Available |
+| — | Parcel | ✅ Works natively (no plugin needed) |
+
+### Parcel
+
+Parcel natively handles `new URL('./file.js', import.meta.url)` patterns without requiring a plugin. The `?esm` query parameter is ignored, but the file will be bundled as a separate entry point. We test Parcel compatibility as part of our test suite.
 
 ## Installation
 

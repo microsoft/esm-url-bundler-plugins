@@ -11,7 +11,7 @@ export const TestOptionsSchema = z.object({
   /** Whether to enable webpack ESM output (experiments.outputModule) */
   outputModule: z.boolean().optional(),
   /** Which bundlers this fixture supports (defaults to all) */
-  bundlers: z.array(z.enum(['webpack', 'rollup', 'vite', 'esbuild'])).optional(),
+  bundlers: z.array(z.enum(['webpack', 'rollup', 'vite', 'esbuild', 'parcel'])).optional(),
   /** Whether to strip ?esm from output URLs (default: false, preserves ?esm) */
   stripEsmQuery: z.boolean().optional(),
   /** 
@@ -37,7 +37,7 @@ export type TestOptions = z.infer<typeof TestOptionsSchema> & {
 };
 
 /** Bundler type */
-export type Bundler = 'webpack' | 'rollup' | 'vite' | 'esbuild';
+export type Bundler = 'webpack' | 'rollup' | 'vite' | 'esbuild' | 'parcel';
 
 /**
  * Represents a parsed test fixture

@@ -5,10 +5,7 @@ coverage/
 .DS_Store
 
 # Test temp directories (ejected files for debugging)
-tests/webpack/tmp/
-tests/rollup/tmp/
-tests/vite/tmp/
-tests/esbuild/tmp/
+tests/*/tmp/
 
 # IDE
 .idea/
@@ -19,3 +16,5 @@ tests/esbuild/tmp/
 # Build artifacts
 *.tsbuildinfo
 test-results/
+
+.parcel-cache/
