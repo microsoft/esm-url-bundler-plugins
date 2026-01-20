@@ -6,9 +6,7 @@ import { EsmUrlPlugin } from '../../packages/webpack/src';
 import {
   createBundlerTestSuite,
   writePackageJson,
-  TestOptions,
-  TestFixture,
-  getOutputFileNameFunction,
+  TestOptions, getOutputFileNameFunction
 } from '../shared';
 
 const fixturesDir = path.resolve(__dirname, '../../test-fixtures');

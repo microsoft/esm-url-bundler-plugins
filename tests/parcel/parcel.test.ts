@@ -2,9 +2,9 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { Parcel } from '@parcel/core';
 import {
-    createBundlerTestSuite,
-    writePackageJson,
-    TestOptions,
+  createBundlerTestSuite,
+  writePackageJson,
+  TestOptions,
 } from '../shared';
 
 const fixturesDir = path.resolve(__dirname, '../../test-fixtures');
