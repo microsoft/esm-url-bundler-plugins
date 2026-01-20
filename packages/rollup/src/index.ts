@@ -1,4 +1,5 @@
 import * as path from 'path';
+import * as fs from 'fs';
 import type { Plugin } from 'rollup';
 import { rollup } from 'rollup';
 
@@ -6,6 +7,20 @@ import { rollup } from 'rollup';
 const ESM_QUERY = '?esm';
 /** Prefix for virtual module IDs */
 const VIRTUAL_PREFIX = '\0esm-url:';
+
+/**
+ * Converts a character position to line and column numbers.
+ * @param code The source code string
+ * @param pos The character position (0-indexed)
+ * @returns Line (1-indexed) and column (0-indexed)
+ */
+function posToLoc(code: string, pos: number): { line: number; column: number } {
+  const lines = code.slice(0, pos).split('\n');
+  return {
+    line: lines.length,
+    column: lines[lines.length - 1].length,
+  };
+}
 
 /**
  * Strips only the 'esm' parameter from a query string, preserving other parameters.
@@ -190,6 +205,17 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): Plugin {
           const originalQuery = queryParts.length > 0 ? '?' + queryParts.join('?') : '';
           const importerDir = path.dirname(id);
           const absolutePath = path.resolve(importerDir, workerPath);
+          
+          // Check that the file exists
+          if (!fs.existsSync(absolutePath)) {
+            this.error({
+              message: `File not found: '${workerPath}' resolved to '${absolutePath}'. Check that the path in new URL('${urlString}', import.meta.url) points to an existing file.`,
+              id,
+              loc: posToLoc(code, match.index),
+            });
+            return null;
+          }
+          
           const contextDir = process.cwd();
           
           // Generate unique entry name from relative path

@@ -5,6 +5,7 @@ import {
   writeFixtureFiles,
   readOutputFiles,
   compareSnapshot,
+  compareErrorSnapshot,
   writeSnapshot,
   TestFixture,
   TestOptions,
@@ -33,6 +34,8 @@ export interface BundlerTestConfig<TBuildResult = void> {
   getEntryPoint?: (fixture: TestFixture) => string;
   /** Additional filter for fixtures beyond standard bundler support check */
   fixtureFilter?: (fixture: TestFixture) => boolean;
+  /** Optional function to extract error message from a failed build result or thrown error */
+  getErrorMessage?: (error: unknown, result?: TBuildResult) => string | undefined;
 }
 
 /**
@@ -88,6 +91,65 @@ export async function runFixtureTest<TBuildResult>(
   // Write config files for standalone debugging
   if (config.writeConfig) {
     config.writeConfig(testDir, entry, options);
+  }
+
+  // Handle expected errors
+  if (options.expectedError) {
+    let errorMessage: string | undefined;
+    let result: TBuildResult | undefined;
+    
+    try {
+      result = await config.runBuild(testDir, entry, options);
+      
+      // Some bundlers don't throw on error, check validation
+      if (config.validateBuild && !config.validateBuild(result)) {
+        // Build failed - get error message from result
+        if (config.getErrorMessage) {
+          errorMessage = config.getErrorMessage(undefined, result);
+        }
+      }
+    } catch (err) {
+      // Build threw an error
+      if (config.getErrorMessage) {
+        errorMessage = config.getErrorMessage(err, result);
+      } else {
+        errorMessage = err instanceof Error ? err.message : String(err);
+      }
+    }
+    
+    if (!errorMessage) {
+      throw new Error(
+        `Expected build to fail with error containing "${options.expectedError}", but build succeeded.`
+      );
+    }
+    
+    // Convert fixture files to input array
+    const inputs = Array.from(fixture.files.entries()).map(([p, content]) => ({
+      path: p,
+      content,
+    }));
+
+    // Compare with error snapshot
+    const snapshotName = `${fixture.name}${suffix}`;
+    const snapshotPath = path.join(config.snapshotsDir, `${snapshotName}.snap.md`);
+    const comparison = compareErrorSnapshot(snapshotPath, snapshotName, config.bundler, inputs, errorMessage);
+
+    if (!comparison.matches) {
+      if (process.env.UPDATE_SNAPSHOTS === 'true') {
+        writeSnapshot(snapshotPath, comparison.actual);
+        console.log(`Updated snapshot: ${snapshotPath}`);
+      } else if (comparison.expected === null) {
+        writeSnapshot(snapshotPath, comparison.actual);
+        console.log(`Created snapshot: ${snapshotPath}`);
+      } else {
+        fail(
+          `Snapshot mismatch for ${snapshotName}.\n` +
+          `Run with UPDATE_SNAPSHOTS=true to update.\n` +
+          `Snapshot path: ${snapshotPath}`
+        );
+      }
+    }
+    return;
   }
 
   // Run build

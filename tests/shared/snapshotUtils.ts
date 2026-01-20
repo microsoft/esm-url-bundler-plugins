@@ -69,6 +69,68 @@ export function writeSnapshot(snapshotPath: string, content: string): void {
 }
 
 /**
+ * Normalizes error messages to remove non-deterministic parts for consistent snapshots
+ */
+function normalizeErrorMessage(errorMessage: string): string {
+  return errorMessage
+    // Remove absolute paths, keeping just the relative part
+    .replace(/[A-Za-z]:[\\\/][^'"\s\n]+[\\\/](tests[\\\/])/gi, '$1')
+    .replace(/file:\/\/\/[^'"\s\n]+[\\\/](tests[\\\/])/gi, '$1')
+    // Normalize path separators
+    .replace(/\\/g, '/')
+    // Remove vite timestamp-based paths
+    .replace(/\.vite-temp\/[^\s]+\.timestamp-\d+-[a-f0-9]+\.mjs/gi, '.vite-temp/<config>')
+    // Remove timing information (e.g., "in 12ms", "in 1.5s")
+    .replace(/\b(in|took)\s+[\d.]+\s*(ms|s|seconds?|milliseconds?)\b/gi, 'in <time>')
+    // Remove stack trace lines (file paths with line numbers)
+    .replace(/^\s+at\s+.*$/gm, '')
+    // Remove ANSI color codes
+    .replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '')
+    // Clean up excessive blank lines from stack trace removal
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/**
+ * Generates a markdown snapshot for an error case
+ */
+export function generateErrorSnapshot(
+  fixture: string,
+  bundler: string,
+  inputs: OutputFile[],
+  errorMessage: string
+): string {
+  const lines: string[] = [
+    `# ${fixture} (${bundler})`,
+    '',
+    '## Input Files',
+    '',
+  ];
+
+  // Sort inputs for consistent ordering
+  const sortedInputs = [...inputs].sort((a, b) => a.path.localeCompare(b.path));
+
+  for (const input of sortedInputs) {
+    const ext = path.extname(input.path).slice(1) || 'txt';
+    lines.push(`### ${input.path}`);
+    lines.push('');
+    lines.push('```' + ext);
+    lines.push(input.content.trim());
+    lines.push('```');
+    lines.push('');
+  }
+
+  lines.push('## Error');
+  lines.push('');
+  lines.push('```');
+  lines.push(normalizeErrorMessage(errorMessage));
+  lines.push('```');
+  lines.push('');
+
+  return lines.join('\n');
+}
+
+/**
  * Compares current output against stored snapshot
  * Returns null if they match, or the new snapshot content if they differ
  */
@@ -80,6 +142,34 @@ export function compareSnapshot(
   outputs: OutputFile[]
 ): { matches: boolean; actual: string; expected: string | null } {
   const actual = generateSnapshot(fixture, bundler, inputs, outputs);
+  const expected = readSnapshot(snapshotPath);
+
+  if (expected === null) {
+    return { matches: false, actual, expected: null };
+  }
+
+  // Normalize line endings for comparison
+  const normalizedActual = actual.replace(/\r\n/g, '\n').trim();
+  const normalizedExpected = expected.replace(/\r\n/g, '\n').trim();
+
+  return {
+    matches: normalizedActual === normalizedExpected,
+    actual,
+    expected,
+  };
+}
+
+/**
+ * Compares current error against stored snapshot
+ */
+export function compareErrorSnapshot(
+  snapshotPath: string,
+  fixture: string,
+  bundler: string,
+  inputs: OutputFile[],
+  errorMessage: string
+): { matches: boolean; actual: string; expected: string | null } {
+  const actual = generateErrorSnapshot(fixture, bundler, inputs, errorMessage);
   const expected = readSnapshot(snapshotPath);
 
   if (expected === null) {

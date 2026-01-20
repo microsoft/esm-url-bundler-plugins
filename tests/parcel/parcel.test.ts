@@ -77,5 +77,9 @@ describe('Parcel esmUrlPlugin', () => {
       }
       return true;
     },
+    getErrorMessage: (error) => {
+      if (error instanceof Error) return error.message;
+      return error ? String(error) : undefined;
+    },
   });
 });

@@ -82,5 +82,9 @@ describe('Vite with esmUrlPlugin', () => {
     getEntryPoint: (fixture) => fixture.files.has('index.js') ? 'index.js' : 'src/main.js',
     // Skip AMD format - Vite doesn't support AMD output
     fixtureFilter: (fixture: TestFixture) => fixture.testOptions?.format !== 'amd',
+    getErrorMessage: (error) => {
+      if (error instanceof Error) return error.message;
+      return error ? String(error) : undefined;
+    },
   });
 });
