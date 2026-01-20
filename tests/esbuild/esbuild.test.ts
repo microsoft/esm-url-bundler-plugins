@@ -73,5 +73,12 @@ describe('esbuild esmUrlPlugin', () => {
     },
     // Skip AMD format - esbuild doesn't support AMD output
     fixtureFilter: (fixture: TestFixture) => fixture.testOptions?.format !== 'amd',
+    getErrorMessage: (error, result) => {
+      if (error instanceof Error) return error.message;
+      if (result && result.errors.length > 0) {
+        return result.errors.map(e => e.text).join('\n');
+      }
+      return error ? String(error) : undefined;
+    },
   });
 });

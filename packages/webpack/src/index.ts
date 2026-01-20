@@ -1,4 +1,5 @@
 import * as path from 'path';
+import * as fs from 'fs';
 import type { Compiler, Compilation } from 'webpack';
 
 /** Query parameter that marks a URL for ESM bundling */
@@ -95,6 +96,19 @@ export class EsmUrlPlugin {
           if (!context) return;
           
           const absolutePath = path.resolve(context, workerPath);
+          
+          // Check that the file exists
+          if (!fs.existsSync(absolutePath)) {
+            const WebpackError = webpack.WebpackError;
+            const error = new WebpackError(
+              `File not found: '${workerPath}' resolved to '${absolutePath}'. Check that the path in new URL('${arg1.value}', import.meta.url) points to an existing file.`
+            );
+            error.name = 'EsmUrlPluginError';
+            error.module = parser.state.module;
+            error.loc = expression.loc;
+            compilation.errors.push(error);
+            return;
+          }
           
           // Generate unique entry name from relative path
           let relativePath = path.relative(compiler.context, absolutePath);

@@ -96,6 +96,20 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): Plugin {
             const importerDir = path.dirname(args.path);
             const absolutePath = path.resolve(importerDir, workerPath);
 
+            // Check that the file exists
+            if (!fs.existsSync(absolutePath)) {
+              return {
+                errors: [{
+                  text: `File not found: '${workerPath}' resolved to '${absolutePath}'. Check that the path in new URL('${urlString}', import.meta.url) points to an existing file.`,
+                  location: {
+                    file: args.path,
+                    line: contents.slice(0, match.index).split('\n').length,
+                    column: match.index - contents.lastIndexOf('\n', match.index) - 1,
+                  },
+                }],
+              };
+            }
+
             // Generate entry name from relative path to context directory
             let relativePath = path.relative(contextDir!, absolutePath);
             

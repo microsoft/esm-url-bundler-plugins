@@ -79,5 +79,21 @@ describe('Rollup esmUrlPlugin', () => {
     runBuild: runRollup,
     writeConfig: writeRollupConfig,
     getEntryPoint: (fixture) => fixture.files.has('index.js') ? 'index.js' : 'src/main.js',
+    getErrorMessage: (error) => {
+      if (error instanceof Error) {
+        // Rollup errors have 'loc' property with line/column info
+        const rollupError = error as Error & { loc?: { line: number; column: number }; id?: string; frame?: string; pos?: number };
+        let message = rollupError.message;
+        if (rollupError.loc && rollupError.id) {
+          const fileName = path.basename(rollupError.id);
+          message = `${fileName}:${rollupError.loc.line}:${rollupError.loc.column} - ${message}`;
+        }
+        if (rollupError.frame) {
+          message += '\n' + rollupError.frame;
+        }
+        return message;
+      }
+      return error ? String(error) : undefined;
+    },
   });
 });

@@ -6,9 +6,7 @@ import { EsmUrlPlugin } from '../../packages/webpack/src';
 import {
   createBundlerTestSuite,
   writePackageJson,
-  TestOptions,
-  TestFixture,
-  getOutputFileNameFunction,
+  TestOptions, getOutputFileNameFunction
 } from '../shared';
 
 const fixturesDir = path.resolve(__dirname, '../../test-fixtures');
@@ -120,5 +118,27 @@ describe('Webpack EsmUrlPlugin', () => {
     writeConfig: writeWebpackConfig,
     validateBuild: (stats) => !stats?.hasErrors(),
     getEntryPoint: (fixture) => fixture.files.has('index.js') ? 'index.js' : 'src/main.js',
+    getErrorMessage: (error, stats) => {
+      if (error instanceof Error) return error.message;
+      if (stats?.hasErrors()) {
+        const info = stats.toJson();
+        return info.errors?.map(e => {
+          // Include file and location in error message
+          let location = '';
+          if (e.moduleIdentifier) {
+            // Extract just the file name from the identifier
+            const modulePath = e.moduleIdentifier.split('!').pop() || e.moduleIdentifier;
+            const fileName = path.basename(modulePath);
+            if (e.loc) {
+              location = `${fileName}:${e.loc} - `;
+            } else {
+              location = `${fileName} - `;
+            }
+          }
+          return `${location}${e.message}`;
+        }).join('\n');
+      }
+      return error ? String(error) : undefined;
+    },
   });
 });

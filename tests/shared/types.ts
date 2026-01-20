@@ -19,6 +19,11 @@ export const TestOptionsSchema = z.object({
    * 'basename' - Use just the file basename (e.g., 'editorWorkerMain' instead of 'node_modules-monaco-editor-esm-...')
    */
   customOutputFileName: z.enum(['basename']).optional(),
+  /**
+   * Expected error message substring. When set, the test expects the build to fail
+   * with an error containing this string.
+   */
+  expectedError: z.string().optional(),
 }).strict();
 
 /**
