@@ -5,9 +5,23 @@ import type { Plugin } from 'esbuild';
 /** Query parameter that marks a URL for ESM bundling */
 const ESM_QUERY = '?esm';
 
+/**
+ * Strips only the 'esm' parameter from a query string, preserving other parameters.
+ * @param queryString The full query string (e.g., '?esm&foo=true' or '?foo=true&esm&bar=1')
+ * @returns The query string without the 'esm' parameter, or empty string if no params remain
+ */
+function stripEsmFromQuery(queryString: string): string {
+  if (!queryString || queryString === '?esm') return '';
+  const params = new URLSearchParams(queryString.startsWith('?') ? queryString.slice(1) : queryString);
+  params.delete('esm');
+  const result = params.toString();
+  return result ? '?' + result : '';
+}
+
 interface EsmUrlMatch {
   filePath: string;
   entryName: string;
+  originalQuery: string;
   start: number;
   end: number;
 }
@@ -77,7 +91,8 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): Plugin {
           const urlString = match[2];
 
           if (urlString.includes(ESM_QUERY)) {
-            const workerPath = urlString.split('?')[0];
+            const [workerPath, ...queryParts] = urlString.split('?');
+            const originalQuery = queryParts.length > 0 ? '?' + queryParts.join('?') : '';
             const importerDir = path.dirname(args.path);
             const absolutePath = path.resolve(importerDir, workerPath);
 
@@ -118,6 +133,7 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): Plugin {
             matches.push({
               filePath: absolutePath,
               entryName: finalEntryName,
+              originalQuery,
               start: match.index,
               end: match.index + fullMatch.length,
             });
@@ -132,7 +148,7 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): Plugin {
         let newContents = contents;
         for (const m of matches.reverse()) {
           // Replace with new URL pointing to the worker output
-          const suffix = stripEsmQuery ? '' : ESM_QUERY;
+          const suffix = stripEsmQuery ? stripEsmFromQuery(m.originalQuery) : m.originalQuery;
           const replacement = `new URL('./${m.entryName}.js${suffix}', import.meta.url)`;
           newContents = newContents.slice(0, m.start) + replacement + newContents.slice(m.end);
         }
