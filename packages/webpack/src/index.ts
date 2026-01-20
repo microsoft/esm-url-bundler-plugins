@@ -4,6 +4,19 @@ import type { Compiler, Compilation } from 'webpack';
 /** Query parameter that marks a URL for ESM bundling */
 const ESM_QUERY = '?esm';
 
+/**
+ * Strips only the 'esm' parameter from a query string, preserving other parameters.
+ * @param queryString The full query string (e.g., '?esm&foo=true' or '?foo=true&esm&bar=1')
+ * @returns The query string without the 'esm' parameter, or empty string if no params remain
+ */
+function stripEsmFromQuery(queryString: string): string {
+  if (!queryString || queryString === '?esm') return '';
+  const params = new URLSearchParams(queryString.startsWith('?') ? queryString.slice(1) : queryString);
+  params.delete('esm');
+  const result = params.toString();
+  return result ? '?' + result : '';
+}
+
 // Try to import HtmlWebpackPlugin types if available, but don't fail if not
 let HtmlWebpackPlugin: any;
 try {
@@ -76,7 +89,8 @@ export class EsmUrlPlugin {
           if (arg1.type !== 'Literal' || typeof arg1.value !== 'string') return;
           if (!arg1.value.includes(ESM_QUERY)) return;
           
-          const workerPath = arg1.value.split('?')[0];
+          const [workerPath, ...queryParts] = arg1.value.split('?');
+          const originalQuery = queryParts.length > 0 ? '?' + queryParts.join('?') : '';
           const context = parser.state.module.context;
           if (!context) return;
           
@@ -113,7 +127,7 @@ export class EsmUrlPlugin {
           // Replace the entire new URL(...) expression
           // Use import.meta.url for ESM output, otherwise use self.location.href for compatibility
           // Note: The non-ESM version assumes worker files are served from the same base path as the HTML
-          const suffix = stripEsmQuery ? '' : ESM_QUERY;
+          const suffix = stripEsmQuery ? stripEsmFromQuery(originalQuery) : originalQuery;
           const replacement = isOutputModule
             ? `new URL('./${entryName}.js${suffix}', import.meta.url)`
             : `new URL('./${entryName}.js${suffix}', self.location.href)`;

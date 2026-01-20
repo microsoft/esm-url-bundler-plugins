@@ -7,9 +7,23 @@ const ESM_QUERY = '?esm';
 /** Prefix for virtual module IDs */
 const VIRTUAL_PREFIX = '\0esm-url:';
 
+/**
+ * Strips only the 'esm' parameter from a query string, preserving other parameters.
+ * @param queryString The full query string (e.g., '?esm&foo=true' or '?foo=true&esm&bar=1')
+ * @returns The query string without the 'esm' parameter, or empty string if no params remain
+ */
+function stripEsmFromQuery(queryString: string): string {
+  if (!queryString || queryString === '?esm') return '';
+  const params = new URLSearchParams(queryString.startsWith('?') ? queryString.slice(1) : queryString);
+  params.delete('esm');
+  const result = params.toString();
+  return result ? '?' + result : '';
+}
+
 interface EsmUrlMatch {
   filePath: string;
   entryName: string;
+  originalQuery: string;
   start: number;
   end: number;
 }
@@ -49,7 +63,8 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): Plugin {
   
   // State variables - reset in buildStart to support multiple builds
   let workerEntries: Map<string, string>; // absolutePath -> entryName
-  let emittedChunks: Map<string, string>; // entryName -> referenceId
+  let emittedChunks: Map<string, { referenceId: string; originalQuery: string }>; // entryName -> { referenceId, originalQuery }
+  let referenceIdToQuery: Map<string, string>; // referenceId -> originalQuery
   // For isolated builds: referenceId -> build info (emitted as assets, built separately)
   let pendingIsolatedBuilds: Map<string, { filePath: string; entryName: string }>;
   // For non-isolated builds with non-ESM output: referenceId -> build info (emitted as chunks, need recompilation)
@@ -69,6 +84,7 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): Plugin {
       // Reset all state for new build
       workerEntries = new Map();
       emittedChunks = new Map();
+      referenceIdToQuery = new Map();
       pendingIsolatedBuilds = new Map();
       pendingRecompilation = new Map();
       additionalAssets = [];
@@ -89,7 +105,8 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): Plugin {
         return null; // Let other plugins or default handling take over
       }
       // Return the relative path, optionally with ?esm preserved for re-bundling
-      const suffix = stripEsmQuery ? '' : ESM_QUERY;
+      const originalQuery = referenceIdToQuery.get(referenceId) || ESM_QUERY;
+      const suffix = stripEsmQuery ? stripEsmFromQuery(originalQuery) : originalQuery;
       return `'${relativePath}${suffix}'`;
     },
 
@@ -169,7 +186,8 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): Plugin {
         const urlString = match[2];
 
         if (urlString.includes(ESM_QUERY)) {
-          const workerPath = urlString.split('?')[0];
+          const [workerPath, ...queryParts] = urlString.split('?');
+          const originalQuery = queryParts.length > 0 ? '?' + queryParts.join('?') : '';
           const importerDir = path.dirname(id);
           const absolutePath = path.resolve(importerDir, workerPath);
           const contextDir = process.cwd();
@@ -202,6 +220,7 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): Plugin {
           matches.push({
             filePath: absolutePath,
             entryName,
+            originalQuery,
             start: match.index,
             end: match.index + fullMatch.length,
           });
@@ -235,7 +254,8 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): Plugin {
         }
         
         ourReferenceIds.add(referenceId);
-        emittedChunks.set(m.entryName, referenceId);
+        referenceIdToQuery.set(referenceId, m.originalQuery);
+        emittedChunks.set(m.entryName, { referenceId, originalQuery: m.originalQuery });
 
         // Replace with new URL using the resolved file URL
         // import.meta.ROLLUP_FILE_URL_<referenceId> will be replaced by resolveFileUrl hook
