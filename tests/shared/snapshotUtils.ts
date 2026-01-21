@@ -42,7 +42,7 @@ export function generateSnapshot(
     lines.push(`### ${output.path}`);
     lines.push('');
     lines.push('```' + ext);
-    lines.push(output.content.trim());
+    lines.push(normalizeOutputContent(output.content.trim()));
     lines.push('```');
     lines.push('');
   }
@@ -69,13 +69,26 @@ export function writeSnapshot(snapshotPath: string, content: string): void {
 }
 
 /**
+ * Normalizes output content to remove non-deterministic parts for consistent snapshots
+ */
+function normalizeOutputContent(content: string): string {
+  return content
+    // Normalize rollup file URL references (e.g., ROLLUP_FILE_URL_Cz0EJ_Cq -> ROLLUP_FILE_URL_####)
+    .replace(/ROLLUP_FILE_URL_[A-Za-z0-9_]+/g, 'ROLLUP_FILE_URL_####');
+}
+
+/**
  * Normalizes error messages to remove non-deterministic parts for consistent snapshots
  */
 function normalizeErrorMessage(errorMessage: string): string {
   return errorMessage
     // Remove absolute paths, keeping just the relative part
+    // Windows paths (e.g., C:\path\to\tests\...)
     .replace(/[A-Za-z]:[\\\/][^'"\s\n]+[\\\/](tests[\\\/])/gi, '$1')
+    // file:// URLs
     .replace(/file:\/\/\/[^'"\s\n]+[\\\/](tests[\\\/])/gi, '$1')
+    // Unix absolute paths (e.g., /home/user/project/tests/...)
+    .replace(/\/[^'"\s\n]+\/(tests\/)/gi, '$1')
     // Normalize path separators
     .replace(/\\/g, '/')
     // Remove vite timestamp-based paths

@@ -67,7 +67,7 @@ self.postMessage('ast-vs-regex-worker');
 
 ```js
 // This comment will be matched by regex (edge case):
-// const url = new URL(import.meta.ROLLUP_FILE_URL_Cz0EJ_Cq, import.meta.url);
+// const url = new URL(import.meta.ROLLUP_FILE_URL_####, import.meta.url);
 
 
 // This is the main usage:
