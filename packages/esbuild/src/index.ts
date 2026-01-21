@@ -1,40 +1,16 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import type { Plugin } from 'esbuild';
+import {
+  ESM_QUERY,
+  stripEsmFromQuery,
+  generateEntryName,
+  findMatches,
+  type OutputFileNameInfo,
+  type EsmUrlMatch,
+} from '@vscode/esm-url-plugin-common';
 
-/** Query parameter that marks a URL for ESM bundling */
-const ESM_QUERY = '?esm';
-
-/**
- * Strips only the 'esm' parameter from a query string, preserving other parameters.
- * @param queryString The full query string (e.g., '?esm&foo=true' or '?foo=true&esm&bar=1')
- * @returns The query string without the 'esm' parameter, or empty string if no params remain
- */
-function stripEsmFromQuery(queryString: string): string {
-  if (!queryString || queryString === '?esm') return '';
-  const params = new URLSearchParams(queryString.startsWith('?') ? queryString.slice(1) : queryString);
-  params.delete('esm');
-  const result = params.toString();
-  return result ? '?' + result : '';
-}
-
-interface EsmUrlMatch {
-  filePath: string;
-  entryName: string;
-  originalQuery: string;
-  start: number;
-  end: number;
-}
-
-/**
- * Information passed to the getOutputFileName callback.
- */
-export interface OutputFileNameInfo {
-  /** Full absolute path to the worker/module file */
-  filePath: string;
-  /** The auto-generated suggested name (without extension) */
-  suggestedName: string;
-}
+export type { OutputFileNameInfo };
 
 export interface EsmUrlPluginOptions {
   /**
@@ -80,109 +56,75 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): Plugin {
           return null;
         }
 
-        // Simple regex to find new URL patterns with ?esm
-        const urlPattern = /new\s+URL\s*\(\s*(['"`])([^'"`]+\?esm[^'"`]*)\1\s*,\s*import\.meta\.url\s*\)/g;
+        const rawMatches = findMatches(contents);
 
-        const matches: EsmUrlMatch[] = [];
-        let match;
-
-        while ((match = urlPattern.exec(contents)) !== null) {
-          const fullMatch = match[0];
-          const urlString = match[2];
-
-          if (urlString.includes(ESM_QUERY)) {
-            const [workerPath, ...queryParts] = urlString.split('?');
-            const originalQuery = queryParts.length > 0 ? '?' + queryParts.join('?') : '';
-            const importerDir = path.dirname(args.path);
-            const absolutePath = path.resolve(importerDir, workerPath);
-
-            // Check that the file exists
-            if (!fs.existsSync(absolutePath)) {
-              return {
-                errors: [{
-                  text: `File not found: '${workerPath}' resolved to '${absolutePath}'. Check that the path in new URL('${urlString}', import.meta.url) points to an existing file.`,
-                  location: {
-                    file: args.path,
-                    line: contents.slice(0, match.index).split('\n').length,
-                    column: match.index - contents.lastIndexOf('\n', match.index) - 1,
-                  },
-                }],
-              };
-            }
-
-            // Generate entry name from relative path to context directory
-            let relativePath = path.relative(contextDir!, absolutePath);
-            
-            // Handle cross-drive paths on Windows: path.relative() returns absolute path
-            // when paths are on different drives (e.g., C: vs D:)
-            if (path.isAbsolute(relativePath)) {
-              // Strip drive letter (e.g., "D:" or "D:\") on Windows
-              relativePath = relativePath.replace(/^[a-zA-Z]:[\\\/]?/, '');
-            }
-            
-            let entryName = relativePath
-              .replace(/\.[^/.]+$/, '')   // Remove extension
-              .replace(/\\/g, '/')        // Normalize Windows slashes
-              .replace(/^(\.\.\/)+/g, '') // Remove leading ../ segments
-              .replace(/^\.\//, '')        // Remove leading ./
-              .replace(/\//g, '-')         // Replace slashes with dashes
-              .replace(/^\.+/, '');        // Remove any remaining leading dots
-            
-            // Handle duplicate names by adding a suffix
-            let finalEntryName = entryName;
-            let counter = 1;
-            while (usedEntryNames.has(finalEntryName) && workerEntries.get(absolutePath) !== finalEntryName) {
-              finalEntryName = `${entryName}-${counter++}`;
-            }
-            
-            // Apply custom output file name if provided
-            if (getOutputFileName) {
-              finalEntryName = getOutputFileName({ filePath: absolutePath, suggestedName: finalEntryName });
-            }
-            
-            usedEntryNames.add(finalEntryName);
-
-            workerEntries.set(absolutePath, finalEntryName);
-
-            matches.push({
-              filePath: absolutePath,
-              entryName: finalEntryName,
-              originalQuery,
-              start: match.index,
-              end: match.index + fullMatch.length,
-            });
-          }
+        if (rawMatches.length === 0) {
+          return null;
         }
 
-        if (matches.length === 0) {
-          return null;
+        // Convert raw matches to full matches with resolved paths
+        const errors: { text: string; location: { file: string; line: number; column: number } }[] = [];
+        const matches: EsmUrlMatch[] = [];
+        
+        for (const raw of rawMatches) {
+          const [workerPath, ...queryParts] = raw.urlString.split('?');
+          const originalQuery = queryParts.length > 0 ? '?' + queryParts.join('?') : '';
+          const importerDir = path.dirname(args.path);
+          const absolutePath = path.resolve(importerDir, workerPath);
+
+          // Check that the file exists
+          if (!fs.existsSync(absolutePath)) {
+            const lines = contents.slice(0, raw.start).split('\n');
+            const line = lines.length;
+            const column = lines[lines.length - 1].length;
+            errors.push({
+              text: `File not found: '${workerPath}' resolved to '${absolutePath}'. Check that the path in new URL('${raw.urlString}', import.meta.url) points to an existing file.`,
+              location: { file: args.path, line, column }
+            });
+            continue;
+          }
+
+          let entryName = generateEntryName(absolutePath, contextDir!);
+          
+          // Handle duplicate names by adding a suffix
+          let finalEntryName = entryName;
+          let counter = 1;
+          while (usedEntryNames.has(finalEntryName) && workerEntries.get(absolutePath) !== finalEntryName) {
+            finalEntryName = `${entryName}-${counter++}`;
+          }
+          
+          // Apply custom output file name if provided
+          if (getOutputFileName) {
+            finalEntryName = getOutputFileName({ filePath: absolutePath, suggestedName: finalEntryName });
+          }
+          
+          usedEntryNames.add(finalEntryName);
+          workerEntries.set(absolutePath, finalEntryName);
+
+          matches.push({
+            filePath: absolutePath,
+            entryName: finalEntryName,
+            originalQuery,
+            start: raw.start,
+            end: raw.end,
+          });
+        }
+
+        // Return errors if any files were not found
+        if (errors.length > 0) {
+          return { errors };
         }
 
         // Replace matches in reverse order to preserve positions
         let newContents = contents;
-        for (const m of matches.reverse()) {
-          // Replace with new URL pointing to the worker output
+        for (const m of matches.slice().reverse()) {
           const suffix = stripEsmQuery ? stripEsmFromQuery(m.originalQuery) : m.originalQuery;
           const replacement = `new URL('./${m.entryName}.js${suffix}', import.meta.url)`;
           newContents = newContents.slice(0, m.start) + replacement + newContents.slice(m.end);
         }
 
-        // Determine the loader based on file extension
-        const ext = path.extname(args.path).toLowerCase();
-        let loader: 'js' | 'ts' | 'jsx' | 'tsx';
-        if (ext === '.ts' || ext === '.mts' || ext === '.cts') {
-          loader = 'ts';
-        } else if (ext === '.tsx' || ext === '.mtsx' || ext === '.ctsx') {
-          loader = 'tsx';
-        } else if (ext === '.jsx' || ext === '.mjsx' || ext === '.cjsx') {
-          loader = 'jsx';
-        } else {
-          loader = 'js';
-        }
-
         return {
           contents: newContents,
-          loader,
         };
       });
 

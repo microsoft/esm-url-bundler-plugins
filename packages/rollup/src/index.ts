@@ -2,56 +2,19 @@ import * as path from 'path';
 import * as fs from 'fs';
 import type { Plugin } from 'rollup';
 import { rollup } from 'rollup';
+import {
+  ESM_QUERY,
+  stripEsmFromQuery,
+  generateEntryName,
+  findMatches,
+  type OutputFileNameInfo,
+  type EsmUrlMatch,
+} from '@vscode/esm-url-plugin-common';
 
-/** Query parameter that marks a URL for ESM bundling */
-const ESM_QUERY = '?esm';
+export type { OutputFileNameInfo };
+
 /** Prefix for virtual module IDs */
 const VIRTUAL_PREFIX = '\0esm-url:';
-
-/**
- * Converts a character position to line and column numbers.
- * @param code The source code string
- * @param pos The character position (0-indexed)
- * @returns Line (1-indexed) and column (0-indexed)
- */
-function posToLoc(code: string, pos: number): { line: number; column: number } {
-  const lines = code.slice(0, pos).split('\n');
-  return {
-    line: lines.length,
-    column: lines[lines.length - 1].length,
-  };
-}
-
-/**
- * Strips only the 'esm' parameter from a query string, preserving other parameters.
- * @param queryString The full query string (e.g., '?esm&foo=true' or '?foo=true&esm&bar=1')
- * @returns The query string without the 'esm' parameter, or empty string if no params remain
- */
-function stripEsmFromQuery(queryString: string): string {
-  if (!queryString || queryString === '?esm') return '';
-  const params = new URLSearchParams(queryString.startsWith('?') ? queryString.slice(1) : queryString);
-  params.delete('esm');
-  const result = params.toString();
-  return result ? '?' + result : '';
-}
-
-interface EsmUrlMatch {
-  filePath: string;
-  entryName: string;
-  originalQuery: string;
-  start: number;
-  end: number;
-}
-
-/**
- * Information passed to the getOutputFileName callback.
- */
-export interface OutputFileNameInfo {
-  /** Full absolute path to the worker/module file */
-  filePath: string;
-  /** The auto-generated suggested name (without extension) */
-  suggestedName: string;
-}
 
 interface EsmUrlPluginOptions {
   /**
@@ -189,72 +152,50 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): Plugin {
         return null;
       }
 
-      // Simple regex to find new URL patterns
-      // This is a simplified approach - a real implementation would use an AST parser
-      const urlPattern = /new\s+URL\s*\(\s*(['"`])([^'"`]+\?esm[^'"`]*)\1\s*,\s*import\.meta\.url\s*\)/g;
+      const rawMatches = findMatches(code);
       
-      const matches: EsmUrlMatch[] = [];
-      let match;
-
-      while ((match = urlPattern.exec(code)) !== null) {
-        const fullMatch = match[0];
-        const urlString = match[2];
-
-        if (urlString.includes(ESM_QUERY)) {
-          const [workerPath, ...queryParts] = urlString.split('?');
-          const originalQuery = queryParts.length > 0 ? '?' + queryParts.join('?') : '';
-          const importerDir = path.dirname(id);
-          const absolutePath = path.resolve(importerDir, workerPath);
-          
-          // Check that the file exists
-          if (!fs.existsSync(absolutePath)) {
-            this.error({
-              message: `File not found: '${workerPath}' resolved to '${absolutePath}'. Check that the path in new URL('${urlString}', import.meta.url) points to an existing file.`,
-              id,
-              loc: posToLoc(code, match.index),
-            });
-            return null;
-          }
-          
-          const contextDir = process.cwd();
-          
-          // Generate unique entry name from relative path
-          let relativePath = path.relative(contextDir, absolutePath);
-          
-          // Handle cross-drive paths on Windows: path.relative() returns absolute path
-          // when paths are on different drives (e.g., C: vs D:)
-          if (path.isAbsolute(relativePath)) {
-            // Strip drive letter (e.g., "D:" or "D:\") on Windows
-            relativePath = relativePath.replace(/^[a-zA-Z]:[\\\/]?/, '');
-          }
-          
-          let entryName = relativePath
-            .replace(/\.[^/.]+$/, '')   // Remove extension
-            .replace(/\\/g, '/')        // Normalize Windows slashes
-            .replace(/^(\.\.\/)+/g, '') // Remove leading ../ segments
-            .replace(/^\.\//, '')       // Remove leading ./
-            .replace(/\//g, '-')         // Replace slashes with dashes
-            .replace(/^\.+/, '');        // Remove any remaining leading dots
-          
-          // Apply custom output file name if provided
-          if (getOutputFileName) {
-            entryName = getOutputFileName({ filePath: absolutePath, suggestedName: entryName });
-          }
-          
-          workerEntries.set(absolutePath, entryName);
-
-          matches.push({
-            filePath: absolutePath,
-            entryName,
-            originalQuery,
-            start: match.index,
-            end: match.index + fullMatch.length,
-          });
-        }
+      if (rawMatches.length === 0) {
+        return null;
       }
 
-      if (matches.length === 0) {
-        return null;
+      // Convert raw matches to full matches with resolved paths
+      const contextDir = process.cwd();
+      const matches: EsmUrlMatch[] = [];
+      
+      for (const raw of rawMatches) {
+        const [workerPath, ...queryParts] = raw.urlString.split('?');
+        const originalQuery = queryParts.length > 0 ? '?' + queryParts.join('?') : '';
+        const importerDir = path.dirname(id);
+        const absolutePath = path.resolve(importerDir, workerPath);
+
+        // Check that the file exists
+        if (!fs.existsSync(absolutePath)) {
+          const lines = code.slice(0, raw.start).split('\n');
+          const line = lines.length;
+          const column = lines[lines.length - 1].length;
+          this.error({
+            message: `File not found: '${workerPath}' resolved to '${absolutePath}'. Check that the path in new URL('${raw.urlString}', import.meta.url) points to an existing file.`,
+            id,
+            loc: { line, column },
+          });
+        }
+        
+        let entryName = generateEntryName(absolutePath, contextDir);
+        
+        // Apply custom output file name if provided
+        if (getOutputFileName) {
+          entryName = getOutputFileName({ filePath: absolutePath, suggestedName: entryName });
+        }
+        
+        workerEntries.set(absolutePath, entryName);
+
+        matches.push({
+          filePath: absolutePath,
+          entryName,
+          originalQuery,
+          start: raw.start,
+          end: raw.end,
+        });
       }
 
       // Replace matches in reverse order to preserve positions

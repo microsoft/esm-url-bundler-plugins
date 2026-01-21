@@ -19,8 +19,8 @@ function writeViteConfig(testDir: string, entry: string, options: TestOptions = 
   const bundleModulesIsolated = options.bundleModulesIsolated ?? false;
   const stripEsmQuery = options.stripEsmQuery ?? false;
   const customOutputFileName = options.customOutputFileName;
-  // Use relative path from packages/rollup/src for the plugin
-  const pluginPath = path.relative(testDir, path.resolve(__dirname, '../../packages/rollup/src/index.ts')).replace(/\\/g, '/');
+  // Use relative path from packages/rollup/dist/esm for the built plugin
+  const pluginPath = path.relative(testDir, path.resolve(__dirname, '../../packages/rollup/dist/esm/index.js')).replace(/\\/g, '/');
   
   // Build getOutputFileName function if needed
   let getOutputFileNameCode = 'undefined';

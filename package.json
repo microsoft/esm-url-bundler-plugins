@@ -9,6 +9,7 @@
   "scripts": {
     "build": "npm run build --workspaces",
     "test": "jest",
+    "test:esbuild": "jest --testPathPatterns=tests/esbuild",
     "test:webpack": "jest --testPathPatterns=tests/webpack",
     "test:rollup": "jest --testPathPatterns=tests/rollup",
     "test:vite": "jest --testPathPatterns=tests/vite",
