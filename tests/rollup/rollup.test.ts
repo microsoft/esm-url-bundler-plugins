@@ -3,10 +3,10 @@ import * as fs from 'fs';
 import { rollup, OutputOptions } from 'rollup';
 import { esmUrlPlugin } from '../../packages/rollup/src';
 import {
-  createBundlerTestSuite,
-  writePackageJson,
-  TestOptions,
-  getOutputFileNameFunction,
+    createBundlerTestSuite,
+    writePackageJson,
+    TestOptions,
+    getOutputFileNameFunction,
 } from '../shared';
 
 const fixturesDir = path.resolve(__dirname, '../../test-fixtures');

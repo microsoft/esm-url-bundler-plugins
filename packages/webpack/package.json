@@ -21,8 +21,11 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.cjs.json && tsc -p tsconfig.esm.json",
+    "build": "rollup -c rollup.config.mjs",
     "clean": "rimraf dist"
+  },
+  "devDependencies": {
+    "@vscode/esm-url-plugin-common": "*"
   },
   "peerDependencies": {
     "webpack": "^5.0.0"

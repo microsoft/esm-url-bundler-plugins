@@ -1,39 +1,21 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import type { Compiler, Compilation } from 'webpack';
+import {
+  ESM_QUERY,
+  stripEsmFromQuery,
+  generateEntryName,
+  type OutputFileNameInfo,
+} from '@vscode/esm-url-plugin-common';
 
-/** Query parameter that marks a URL for ESM bundling */
-const ESM_QUERY = '?esm';
-
-/**
- * Strips only the 'esm' parameter from a query string, preserving other parameters.
- * @param queryString The full query string (e.g., '?esm&foo=true' or '?foo=true&esm&bar=1')
- * @returns The query string without the 'esm' parameter, or empty string if no params remain
- */
-function stripEsmFromQuery(queryString: string): string {
-  if (!queryString || queryString === '?esm') return '';
-  const params = new URLSearchParams(queryString.startsWith('?') ? queryString.slice(1) : queryString);
-  params.delete('esm');
-  const result = params.toString();
-  return result ? '?' + result : '';
-}
+export type { OutputFileNameInfo };
 
 // Try to import HtmlWebpackPlugin types if available, but don't fail if not
 let HtmlWebpackPlugin: any;
 try {
   HtmlWebpackPlugin = require('html-webpack-plugin');
-} catch (e) {
+} catch {
   // HtmlWebpackPlugin not installed
-}
-
-/**
- * Information passed to the getOutputFileName callback.
- */
-export interface OutputFileNameInfo {
-  /** Full absolute path to the worker/module file */
-  filePath: string;
-  /** The auto-generated suggested name (without extension) */
-  suggestedName: string;
 }
 
 export interface EsmUrlPluginOptions {
@@ -110,23 +92,7 @@ export class EsmUrlPlugin {
             return;
           }
           
-          // Generate unique entry name from relative path
-          let relativePath = path.relative(compiler.context, absolutePath);
-          
-          // Handle cross-drive paths on Windows: path.relative() returns absolute path
-          // when paths are on different drives (e.g., C: vs D:)
-          if (path.isAbsolute(relativePath)) {
-            // Strip drive letter (e.g., "D:" or "D:\") on Windows
-            relativePath = relativePath.replace(/^[a-zA-Z]:[\\\/]?/, '');
-          }
-          
-          let entryName = relativePath
-            .replace(/\.[^/.]+$/, '')   // Remove extension
-            .replace(/\\/g, '/')        // Normalize Windows slashes
-            .replace(/^(\.\.\/)+/g, '') // Remove leading ../ segments
-            .replace(/^\.\//, '')       // Remove leading ./
-            .replace(/\//g, '-')         // Replace slashes with dashes
-            .replace(/^\.+/, '');        // Remove any remaining leading dots
+          let entryName = generateEntryName(absolutePath, compiler.context);
           
           // Apply custom output file name if provided
           if (getOutputFileName) {

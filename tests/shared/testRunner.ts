@@ -142,7 +142,7 @@ export async function runFixtureTest<TBuildResult>(
         writeSnapshot(snapshotPath, comparison.actual);
         console.log(`Created snapshot: ${snapshotPath}`);
       } else {
-        fail(
+        throw new Error(
           `Snapshot mismatch for ${snapshotName}.\n` +
           `Run with UPDATE_SNAPSHOTS=true to update.\n` +
           `Snapshot path: ${snapshotPath}`
@@ -183,7 +183,7 @@ export async function runFixtureTest<TBuildResult>(
       writeSnapshot(snapshotPath, comparison.actual);
       console.log(`Created snapshot: ${snapshotPath}`);
     } else {
-      fail(
+      throw new Error(
         `Snapshot mismatch for ${snapshotName}.\n` +
         `Run with UPDATE_SNAPSHOTS=true to update.\n` +
         `Snapshot path: ${snapshotPath}`
