@@ -80,11 +80,13 @@ for (const bundler of bundlers) {
   if (!fs.existsSync(tmpDir)) continue;
   
   // Get all fixtures that have a dist folder with main.js or index.js
-  // and are supported for this bundler
+  // and are supported for this bundler (excluding error test fixtures)
   const fixtures = fs.readdirSync(tmpDir).filter(name => {
     const distDir = path.join(tmpDir, name, 'dist');
     if (getMainEntry(distDir) === null) return false;
     const testOptions = getTestOptionsForFixture(name);
+    // Skip fixtures that are expected to error - they don't produce working output
+    if (testOptions?.expectedError) return false;
     return isFixtureSupportedFor(testOptions, bundler);
   });
 
