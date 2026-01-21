@@ -49,6 +49,10 @@ extends:
             workingDirectory: $(Build.SourcesDirectory)
 
           - script: npm run build
+            displayName: Build common package
+            workingDirectory: $(Build.SourcesDirectory)/packages/common
+
+          - script: npm run build
             displayName: Build plugin
             workingDirectory: $(Build.SourcesDirectory)/packages/webpack
 
@@ -73,6 +77,10 @@ extends:
           - script: npm ci
             displayName: Install NPM dependencies
             workingDirectory: $(Build.SourcesDirectory)
+
+          - script: npm run build
+            displayName: Build common package
+            workingDirectory: $(Build.SourcesDirectory)/packages/common
 
           - script: npm run build
             displayName: Build plugin
@@ -103,6 +111,10 @@ extends:
           - script: npm ci
             displayName: Install NPM dependencies
             workingDirectory: $(Build.SourcesDirectory)
+
+          - script: npm run build
+            displayName: Build common package
+            workingDirectory: $(Build.SourcesDirectory)/packages/common
 
           - script: npm run build
             displayName: Build plugin
