@@ -68,6 +68,13 @@ function runVite(testDir: string): Promise<void> {
   }).then(() => {});
 }
 
+function filterNpmWarnings(message: string): string {
+  return message
+    .split('\n')
+    .filter(line => !line.startsWith('npm warn '))
+    .join('\n');
+}
+
 describe('Vite with esmUrlPlugin', () => {
   createBundlerTestSuite({
     bundler: 'vite',
@@ -83,8 +90,8 @@ describe('Vite with esmUrlPlugin', () => {
     // Skip AMD format - Vite doesn't support AMD output
     fixtureFilter: (fixture: TestFixture) => fixture.testOptions?.format !== 'amd',
     getErrorMessage: (error) => {
-      if (error instanceof Error) return error.message;
-      return error ? String(error) : undefined;
+      if (error instanceof Error) return filterNpmWarnings(error.message);
+      return error ? filterNpmWarnings(String(error)) : undefined;
     },
   });
 });
