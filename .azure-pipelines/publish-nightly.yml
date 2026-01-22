@@ -44,7 +44,7 @@ extends:
             inputs:
               versionSpec: '20.x'
 
-          - script: npm ci
+          - script: npm ci --verbose
             displayName: Install NPM dependencies
             workingDirectory: $(Build.SourcesDirectory)
 
@@ -74,7 +74,7 @@ extends:
             inputs:
               versionSpec: '20.x'
 
-          - script: npm ci
+          - script: npm ci --verbose
             displayName: Install NPM dependencies
             workingDirectory: $(Build.SourcesDirectory)
 
@@ -108,7 +108,7 @@ extends:
             inputs:
               versionSpec: '20.x'
 
-          - script: npm ci
+          - script: npm ci --verbose
             displayName: Install NPM dependencies
             workingDirectory: $(Build.SourcesDirectory)
 
