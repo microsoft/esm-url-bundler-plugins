@@ -3,11 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "description": "Bundler plugins for handling ?esm URL imports",
-  "workspaces": [
-    "packages/*"
-  ],
   "scripts": {
-    "build": "npm run build --workspaces",
+    "build": "pnpm -r run build",
     "test": "jest",
     "test:esbuild": "jest --testPathPatterns=tests/esbuild",
     "test:webpack": "jest --testPathPatterns=tests/webpack",

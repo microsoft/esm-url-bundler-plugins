@@ -41,19 +41,22 @@ extends:
             inputs:
               versionSpec: '20.x'
 
-          - script: npm ci
-            displayName: Install NPM dependencies
+          - script: corepack enable && corepack prepare pnpm@latest --activate
+            displayName: Install pnpm
+
+          - script: pnpm install
+            displayName: Install dependencies
             workingDirectory: $(Build.SourcesDirectory)
 
-          - script: npm run build
+          - script: pnpm run build
             displayName: Build common package
             workingDirectory: $(Build.SourcesDirectory)/packages/common
 
-          - script: npm run build
+          - script: pnpm run build
             displayName: Build plugin
             workingDirectory: $(Build.SourcesDirectory)/packages/webpack
 
-          - script: npm test -- --testPathPatterns=tests/webpack
+          - script: pnpm test -- --testPathPatterns=tests/webpack
             displayName: Run tests
             workingDirectory: $(Build.SourcesDirectory)
 
@@ -70,23 +73,26 @@ extends:
             inputs:
               versionSpec: '20.x'
 
-          - script: npm ci
-            displayName: Install NPM dependencies
+          - script: corepack enable && corepack prepare pnpm@latest --activate
+            displayName: Install pnpm
+
+          - script: pnpm install
+            displayName: Install dependencies
             workingDirectory: $(Build.SourcesDirectory)
 
-          - script: npm run build
+          - script: pnpm run build
             displayName: Build common package
             workingDirectory: $(Build.SourcesDirectory)/packages/common
 
-          - script: npm run build
+          - script: pnpm run build
             displayName: Build plugin
             workingDirectory: $(Build.SourcesDirectory)/packages/rollup
 
-          - script: npm test -- --testPathPatterns=tests/rollup
+          - script: pnpm test -- --testPathPatterns=tests/rollup
             displayName: Run Rollup tests
             workingDirectory: $(Build.SourcesDirectory)
 
-          - script: npm test -- --testPathPatternss=tests/vite
+          - script: pnpm test -- --testPathPatternss=tests/vite
             displayName: Run Vite tests
             workingDirectory: $(Build.SourcesDirectory)
 
@@ -103,19 +109,22 @@ extends:
             inputs:
               versionSpec: '20.x'
 
-          - script: npm ci
-            displayName: Install NPM dependencies
+          - script: corepack enable && corepack prepare pnpm@latest --activate
+            displayName: Install pnpm
+
+          - script: pnpm install
+            displayName: Install dependencies
             workingDirectory: $(Build.SourcesDirectory)
 
-          - script: npm run build
+          - script: pnpm run build
             displayName: Build common package
             workingDirectory: $(Build.SourcesDirectory)/packages/common
 
-          - script: npm run build
+          - script: pnpm run build
             displayName: Build plugin
             workingDirectory: $(Build.SourcesDirectory)/packages/esbuild
 
-          - script: npm test -- --testPathPatterns=tests/esbuild
+          - script: pnpm test -- --testPathPatterns=tests/esbuild
             displayName: Run tests
             workingDirectory: $(Build.SourcesDirectory)
 

@@ -25,7 +25,7 @@
     "clean": "rimraf dist"
   },
   "devDependencies": {
-    "@vscode/esm-url-plugin-common": "*",
+    "@vscode/esm-url-plugin-common": "workspace:*",
     "rollup": "^4.0.0"
   },
   "peerDependencies": {
