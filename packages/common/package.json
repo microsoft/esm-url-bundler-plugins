@@ -22,8 +22,11 @@
     "dist"
   ],
   "scripts": {
-    "build": "npx rollup -c rollup.config.mjs",
+    "build": "rollup -c rollup.config.mjs",
     "clean": "rimraf dist"
+  },
+  "devDependencies": {
+    "rollup": "^4.0.0"
   },
   "license": "MIT"
 }
