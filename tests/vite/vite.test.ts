@@ -62,10 +62,21 @@ export default defineConfig({
 }
 
 function runVite(testDir: string): Promise<void> {
-  return execAsync('npx vite build', {
+  const viteBin = path.resolve(__dirname, '../../node_modules/.bin/vite');
+  return execAsync(`"${viteBin}" build`, {
     cwd: testDir,
     env: { ...process.env, NODE_ENV: 'production' },
   }).then(() => {});
+}
+
+function extractViteError(message: string): string {
+  // Extract the plugin error from vite output
+  // Look for [esm-url-plugin] or [plugin esm-url-plugin] prefix
+  const match = message.match(/\[esm-url-plugin\].*?(?=\nfile:|$)/s);
+  if (match) {
+    return match[0].trim();
+  }
+  return message;
 }
 
 describe('Vite with esmUrlPlugin', () => {
@@ -83,8 +94,8 @@ describe('Vite with esmUrlPlugin', () => {
     // Skip AMD format - Vite doesn't support AMD output
     fixtureFilter: (fixture: TestFixture) => fixture.testOptions?.format !== 'amd',
     getErrorMessage: (error) => {
-      if (error instanceof Error) return error.message;
-      return error ? String(error) : undefined;
+      if (error instanceof Error) return extractViteError(error.message);
+      return error ? extractViteError(String(error)) : undefined;
     },
   });
 });

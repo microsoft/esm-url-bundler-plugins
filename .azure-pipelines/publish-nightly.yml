@@ -45,18 +45,14 @@ extends:
               versionSpec: '20.x'
 
           - script: npm ci
-            displayName: Install NPM dependencies
+            displayName: Install dependencies
             workingDirectory: $(Build.SourcesDirectory)
 
           - script: npm run build
-            displayName: Build common package
-            workingDirectory: $(Build.SourcesDirectory)/packages/common
+            displayName: Build packages
+            workingDirectory: $(Build.SourcesDirectory)
 
-          - script: npm run build
-            displayName: Build plugin
-            workingDirectory: $(Build.SourcesDirectory)/packages/webpack
-
-          - script: npm test -- --testPathPatterns=tests/webpack
+          - script: npm test
             displayName: Run tests
             workingDirectory: $(Build.SourcesDirectory)
 
@@ -75,23 +71,15 @@ extends:
               versionSpec: '20.x'
 
           - script: npm ci
-            displayName: Install NPM dependencies
+            displayName: Install dependencies
             workingDirectory: $(Build.SourcesDirectory)
 
           - script: npm run build
-            displayName: Build common package
-            workingDirectory: $(Build.SourcesDirectory)/packages/common
-
-          - script: npm run build
-            displayName: Build plugin
-            workingDirectory: $(Build.SourcesDirectory)/packages/rollup
-
-          - script: npm test -- --testPathPatterns=tests/rollup
-            displayName: Run Rollup tests
+            displayName: Build packages
             workingDirectory: $(Build.SourcesDirectory)
 
-          - script: npm test -- --testPathPatternss=tests/vite
-            displayName: Run Vite tests
+          - script: npm test
+            displayName: Run tests
             workingDirectory: $(Build.SourcesDirectory)
 
         tag: next
@@ -109,18 +97,14 @@ extends:
               versionSpec: '20.x'
 
           - script: npm ci
-            displayName: Install NPM dependencies
+            displayName: Install dependencies
             workingDirectory: $(Build.SourcesDirectory)
 
           - script: npm run build
-            displayName: Build common package
-            workingDirectory: $(Build.SourcesDirectory)/packages/common
+            displayName: Build packages
+            workingDirectory: $(Build.SourcesDirectory)
 
-          - script: npm run build
-            displayName: Build plugin
-            workingDirectory: $(Build.SourcesDirectory)/packages/esbuild
-
-          - script: npm test -- --testPathPatterns=tests/esbuild
+          - script: npm test
             displayName: Run tests
             workingDirectory: $(Build.SourcesDirectory)
 
