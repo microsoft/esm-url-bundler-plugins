@@ -42,7 +42,12 @@ export function generateSnapshot(
     lines.push(`### ${output.path}`);
     lines.push('');
     lines.push('```' + ext);
-    lines.push(normalizeOutputContent(output.content.trim()));
+    // Skip source map content as it contains non-deterministic paths
+    if (output.path.endsWith('.map')) {
+      lines.push('(skipped in snapshot)');
+    } else {
+      lines.push(normalizeOutputContent(output.content.trim()));
+    }
     lines.push('```');
     lines.push('');
   }

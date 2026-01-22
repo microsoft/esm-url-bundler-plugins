@@ -99,9 +99,6 @@ async function runWebpack(testDir: string, entry: string, options: TestOptions =
 
     compiler.run((err, stats) => {
       if (err) return reject(err);
-      if (stats?.hasErrors()) {
-        console.error(stats.toString({ colors: true }));
-      }
       compiler.close(() => {});
       resolve(stats);
     });
