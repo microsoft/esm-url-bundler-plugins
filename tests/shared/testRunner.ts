@@ -1,5 +1,6 @@
 import * as path from 'path';
 import * as fs from 'fs';
+import { createTwoFilesPatch } from 'diff';
 import {
   loadAllFixtures,
   writeFixtureFiles,
@@ -143,29 +144,15 @@ export async function runFixtureTest<TBuildResult>(
         console.log(`Created snapshot: ${snapshotPath}`);
       } else {
         // Print a unified diff of expected vs actual
-        const expectedLines = comparison.expected!.split('\n');
-        const actualLines = comparison.actual.split('\n');
-        console.log('=== SNAPSHOT DIFF ===');
-        console.log(`--- expected (${snapshotPath})`);
-        console.log(`+++ actual`);
-        
-        // Simple line-by-line diff
-        const maxLines = Math.max(expectedLines.length, actualLines.length);
-        for (let i = 0; i < maxLines; i++) {
-          const exp = expectedLines[i];
-          const act = actualLines[i];
-          if (exp === act) {
-            console.log(` ${exp ?? ''}`);
-          } else if (exp === undefined) {
-            console.log(`+${act}`);
-          } else if (act === undefined) {
-            console.log(`-${exp}`);
-          } else {
-            console.log(`-${exp}`);
-            console.log(`+${act}`);
-          }
-        }
-        console.log('=== END DIFF ===');
+        const diff = createTwoFilesPatch(
+          snapshotPath,
+          'actual',
+          comparison.expected!,
+          comparison.actual,
+          'expected',
+          'actual'
+        );
+        console.log(diff);
         throw new Error(
           `Snapshot mismatch for ${snapshotName}.\n` +
           `Run with UPDATE_SNAPSHOTS=true to update.\n` +
@@ -207,6 +194,16 @@ export async function runFixtureTest<TBuildResult>(
       writeSnapshot(snapshotPath, comparison.actual);
       console.log(`Created snapshot: ${snapshotPath}`);
     } else {
+      // Print a unified diff of expected vs actual
+      const diff = createTwoFilesPatch(
+        snapshotPath,
+        'actual',
+        comparison.expected!,
+        comparison.actual,
+        'expected',
+        'actual'
+      );
+      console.log(diff);
       throw new Error(
         `Snapshot mismatch for ${snapshotName}.\n` +
         `Run with UPDATE_SNAPSHOTS=true to update.\n` +
