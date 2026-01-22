@@ -53,13 +53,9 @@ extends:
 
           - script: pnpm run build
             displayName: Build common package
-            workingDirectory: $(Build.SourcesDirectory)/packages/common
+            workingDirectory: $(Build.SourcesDirectory)
 
-          - script: pnpm run build
-            displayName: Build plugin
-            workingDirectory: $(Build.SourcesDirectory)/packages/webpack
-
-          - script: pnpm test -- --testPathPatterns=tests/webpack
+          - script: pnpm test
             displayName: Run tests
             workingDirectory: $(Build.SourcesDirectory)
 
@@ -86,18 +82,10 @@ extends:
 
           - script: pnpm run build
             displayName: Build common package
-            workingDirectory: $(Build.SourcesDirectory)/packages/common
-
-          - script: pnpm run build
-            displayName: Build plugin
-            workingDirectory: $(Build.SourcesDirectory)/packages/rollup
-
-          - script: pnpm test -- --testPathPatterns=tests/rollup
-            displayName: Run Rollup tests
             workingDirectory: $(Build.SourcesDirectory)
 
-          - script: pnpm test -- --testPathPatternss=tests/vite
-            displayName: Run Vite tests
+          - script: pnpm test
+            displayName: Run tests
             workingDirectory: $(Build.SourcesDirectory)
 
         tag: next
@@ -123,13 +111,9 @@ extends:
 
           - script: pnpm run build
             displayName: Build common package
-            workingDirectory: $(Build.SourcesDirectory)/packages/common
+            workingDirectory: $(Build.SourcesDirectory)
 
-          - script: pnpm run build
-            displayName: Build plugin
-            workingDirectory: $(Build.SourcesDirectory)/packages/esbuild
-
-          - script: pnpm test -- --testPathPatterns=tests/esbuild
+          - script: pnpm test
             displayName: Run tests
             workingDirectory: $(Build.SourcesDirectory)
 

@@ -50,11 +50,7 @@ extends:
 
           - script: pnpm run build
             displayName: Build common package
-            workingDirectory: $(Build.SourcesDirectory)/packages/common
-
-          - script: pnpm run build
-            displayName: Build plugin
-            workingDirectory: $(Build.SourcesDirectory)/packages/webpack
+            workingDirectory: $(Build.SourcesDirectory)
 
           - script: pnpm test -- --testPathPatterns=tests/webpack
             displayName: Run tests
@@ -82,11 +78,7 @@ extends:
 
           - script: pnpm run build
             displayName: Build common package
-            workingDirectory: $(Build.SourcesDirectory)/packages/common
-
-          - script: pnpm run build
-            displayName: Build plugin
-            workingDirectory: $(Build.SourcesDirectory)/packages/rollup
+            workingDirectory: $(Build.SourcesDirectory)
 
           - script: pnpm test -- --testPathPatterns=tests/rollup
             displayName: Run Rollup tests
@@ -118,11 +110,7 @@ extends:
 
           - script: pnpm run build
             displayName: Build common package
-            workingDirectory: $(Build.SourcesDirectory)/packages/common
-
-          - script: pnpm run build
-            displayName: Build plugin
-            workingDirectory: $(Build.SourcesDirectory)/packages/esbuild
+            workingDirectory: $(Build.SourcesDirectory)
 
           - script: pnpm test -- --testPathPatterns=tests/esbuild
             displayName: Run tests
