@@ -41,7 +41,7 @@ extends:
             inputs:
               versionSpec: '20.x'
 
-          - script: corepack enable && corepack prepare pnpm@latest --activate
+          - script: npm install -g pnpm
             displayName: Install pnpm
 
           - script: pnpm install
@@ -69,7 +69,7 @@ extends:
             inputs:
               versionSpec: '20.x'
 
-          - script: corepack enable && corepack prepare pnpm@latest --activate
+          - script: npm install -g pnpm
             displayName: Install pnpm
 
           - script: pnpm install
@@ -101,7 +101,7 @@ extends:
             inputs:
               versionSpec: '20.x'
 
-          - script: corepack enable && corepack prepare pnpm@latest --activate
+          - script: npm install -g pnpm
             displayName: Install pnpm
 
           - script: pnpm install
