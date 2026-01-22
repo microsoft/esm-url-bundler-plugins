@@ -21,11 +21,12 @@
     "dist"
   ],
   "scripts": {
-    "build": "npx rollup -c rollup.config.mjs",
+    "build": "rollup -c rollup.config.mjs",
     "clean": "rimraf dist"
   },
   "devDependencies": {
-    "@vscode/esm-url-plugin-common": "*"
+    "@vscode/esm-url-plugin-common": "*",
+    "rollup": "^4.0.0"
   },
   "peerDependencies": {
     "webpack": "^5.0.0"
