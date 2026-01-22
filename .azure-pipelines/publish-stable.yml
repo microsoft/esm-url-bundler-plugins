@@ -41,18 +41,15 @@ extends:
             inputs:
               versionSpec: '20.x'
 
-          - script: npm install -g pnpm
-            displayName: Install pnpm
-
-          - script: pnpm install
+          - script: npm ci
             displayName: Install dependencies
             workingDirectory: $(Build.SourcesDirectory)
 
-          - script: pnpm run build
-            displayName: Build common package
+          - script: npm run build
+            displayName: Build packages
             workingDirectory: $(Build.SourcesDirectory)
 
-          - script: pnpm test -- --testPathPatterns=tests/webpack
+          - script: npm test -- --testPathPatterns=tests/webpack
             displayName: Run tests
             workingDirectory: $(Build.SourcesDirectory)
 
@@ -69,22 +66,19 @@ extends:
             inputs:
               versionSpec: '20.x'
 
-          - script: npm install -g pnpm
-            displayName: Install pnpm
-
-          - script: pnpm install
+          - script: npm ci
             displayName: Install dependencies
             workingDirectory: $(Build.SourcesDirectory)
 
-          - script: pnpm run build
-            displayName: Build common package
+          - script: npm run build
+            displayName: Build packages
             workingDirectory: $(Build.SourcesDirectory)
 
-          - script: pnpm test -- --testPathPatterns=tests/rollup
+          - script: npm test -- --testPathPatterns=tests/rollup
             displayName: Run Rollup tests
             workingDirectory: $(Build.SourcesDirectory)
 
-          - script: pnpm test -- --testPathPatternss=tests/vite
+          - script: npm test -- --testPathPatterns=tests/vite
             displayName: Run Vite tests
             workingDirectory: $(Build.SourcesDirectory)
 
@@ -101,18 +95,15 @@ extends:
             inputs:
               versionSpec: '20.x'
 
-          - script: npm install -g pnpm
-            displayName: Install pnpm
-
-          - script: pnpm install
+          - script: npm ci
             displayName: Install dependencies
             workingDirectory: $(Build.SourcesDirectory)
 
-          - script: pnpm run build
-            displayName: Build common package
+          - script: npm run build
+            displayName: Build packages
             workingDirectory: $(Build.SourcesDirectory)
 
-          - script: pnpm test -- --testPathPatterns=tests/esbuild
+          - script: npm test -- --testPathPatterns=tests/esbuild
             displayName: Run tests
             workingDirectory: $(Build.SourcesDirectory)
 

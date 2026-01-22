@@ -44,18 +44,15 @@ extends:
             inputs:
               versionSpec: '20.x'
 
-          - script: npm install -g pnpm
-            displayName: Install pnpm
-
-          - script: pnpm install
+          - script: npm ci
             displayName: Install dependencies
             workingDirectory: $(Build.SourcesDirectory)
 
-          - script: pnpm run build
-            displayName: Build common package
+          - script: npm run build
+            displayName: Build packages
             workingDirectory: $(Build.SourcesDirectory)
 
-          - script: pnpm test
+          - script: npm test
             displayName: Run tests
             workingDirectory: $(Build.SourcesDirectory)
 
@@ -73,18 +70,15 @@ extends:
             inputs:
               versionSpec: '20.x'
 
-          - script: npm install -g pnpm
-            displayName: Install pnpm
-
-          - script: pnpm install
+          - script: npm ci
             displayName: Install dependencies
             workingDirectory: $(Build.SourcesDirectory)
 
-          - script: pnpm run build
-            displayName: Build common package
+          - script: npm run build
+            displayName: Build packages
             workingDirectory: $(Build.SourcesDirectory)
 
-          - script: pnpm test
+          - script: npm test
             displayName: Run tests
             workingDirectory: $(Build.SourcesDirectory)
 
@@ -102,18 +96,15 @@ extends:
             inputs:
               versionSpec: '20.x'
 
-          - script: npm install -g pnpm
-            displayName: Install pnpm
-
-          - script: pnpm install
+          - script: npm ci
             displayName: Install dependencies
             workingDirectory: $(Build.SourcesDirectory)
 
-          - script: pnpm run build
-            displayName: Build common package
+          - script: npm run build
+            displayName: Build packages
             workingDirectory: $(Build.SourcesDirectory)
 
-          - script: pnpm test
+          - script: npm test
             displayName: Run tests
             workingDirectory: $(Build.SourcesDirectory)
 
