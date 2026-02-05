@@ -16,6 +16,22 @@ export type { OutputFileNameInfo };
 /** Prefix for virtual module IDs */
 const VIRTUAL_PREFIX = '\0esm-url:';
 
+/**
+ * Vite-specific configuration passed to configResolved hook.
+ * We only care about the command property to detect serve mode.
+ */
+interface ViteResolvedConfig {
+  command: 'serve' | 'build';
+}
+
+/**
+ * Extended plugin interface that includes Vite-specific hooks.
+ * Vite plugins extend Rollup plugins with additional hooks.
+ */
+interface VitePlugin extends Plugin {
+  configResolved?: (config: ViteResolvedConfig) => void;
+}
+
 interface EsmUrlPluginOptions {
   /**
    * When true, each ?esm referenced module is built in its own isolated rollup step.
@@ -36,7 +52,7 @@ interface EsmUrlPluginOptions {
   getOutputFileName?: (info: OutputFileNameInfo) => string;
 }
 
-export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): Plugin {
+export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): VitePlugin {
   const { bundleModulesIsolated = false, stripEsmQuery = false, getOutputFileName } = options;
   
   // State variables - reset in buildStart to support multiple builds
@@ -54,9 +70,17 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): Plugin {
   
   let outputFormat: string = 'es';
   let outputDir: string | undefined;
+  
+  // In Vite serve mode, ESM modules are transpiled on-the-fly, so no need to emit files or rewrite URLs
+  let isServeMode = false;
 
   return {
     name: 'esm-url-plugin',
+
+    // Vite-specific hook: detect serve mode (dev server)
+    configResolved(config) {
+      isServeMode = config.command === 'serve';
+    },
 
     buildStart() {
       // Reset all state for new build
@@ -142,6 +166,11 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): Plugin {
     },
 
     async transform(code, id) {
+      // In serve mode, skip all processing - Vite transpiles ESM on-the-fly
+      if (isServeMode) {
+        return null;
+      }
+      
       // Skip non-JS files
       if (!/\.[jt]sx?$/.test(id)) {
         return null;
