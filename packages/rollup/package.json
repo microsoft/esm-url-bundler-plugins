@@ -26,7 +26,7 @@
   },
   "devDependencies": {
     "@vscode/esm-url-plugin-common": "*",
-    "rollup": "^4.0.0"
+    "rollup": "^4.59.0"
   },
   "peerDependencies": {
     "rollup": "^3.0.0 || ^4.0.0"
