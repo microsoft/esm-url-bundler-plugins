@@ -49,27 +49,35 @@ self.postMessage('shared-worker');
 ### index.js
 
 ```js
+//#region input/module1.js
 function createWorker1() {
-  const workerUrl = new URL("input-worker.js?esm", import.meta.url);
-  return new Worker(workerUrl, { type: "module" });
+	const workerUrl = new URL("input-worker.js?esm", import.meta.url);
+	return new Worker(workerUrl, { type: "module" });
 }
+//#endregion
+//#region input/module2.js
 function createWorker2() {
-  const workerUrl = new URL("input-worker.js?esm", import.meta.url);
-  return new Worker(workerUrl, { type: "module" });
+	const workerUrl = new URL("input-worker.js?esm", import.meta.url);
+	return new Worker(workerUrl, { type: "module" });
 }
-let count = 0;
+//#endregion
+//#region input/index.js
+var count = 0;
 function onMessage(e) {
-  count++;
-  if (count === 2) console.log("[WORKER_OK]", "both");
+	count++;
+	if (count === 2) console.log("[WORKER_OK]", "both");
 }
-const w1 = createWorker1();
-const w2 = createWorker2();
+var w1 = createWorker1();
+var w2 = createWorker2();
 w1.onmessage = onMessage;
 w2.onmessage = onMessage;
+//#endregion
 ```
 
 ### input-worker.js
 
 ```js
+//#region input/worker.js
 self.postMessage("shared-worker");
+//#endregion
 ```

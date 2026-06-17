@@ -22,13 +22,17 @@ worker.onmessage = (e) => console.log('[WORKER_OK]', e.data);
 ### external-worker.js
 
 ```js
+//#region external/worker.js
 self.postMessage("External worker loaded");
+//#endregion
 ```
 
 ### index.js
 
 ```js
-const workerUrl = new URL("external-worker.js?esm", import.meta.url);
-const worker = new Worker(workerUrl, { type: "module" });
+//#region input/index.js
+var workerUrl = new URL("external-worker.js?esm", import.meta.url);
+var worker = new Worker(workerUrl, { type: "module" });
 worker.onmessage = (e) => console.log("[WORKER_OK]", e.data);
+//#endregion
 ```

@@ -21,13 +21,17 @@ self.postMessage('relative-paths');
 ### input-workers-processor.js
 
 ```js
+//#region input/workers/processor.js
 self.postMessage("relative-paths");
+//#endregion
 ```
 
 ### main.js
 
 ```js
-const workerUrl = new URL("input-workers-processor.js?esm", import.meta.url);
-const worker = new Worker(workerUrl);
+//#region input/src/main.js
+var workerUrl = new URL("input-workers-processor.js?esm", import.meta.url);
+var worker = new Worker(workerUrl);
 worker.onmessage = (e) => console.log("[WORKER_OK]", e.data);
+//#endregion
 ```

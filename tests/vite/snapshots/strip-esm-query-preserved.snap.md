@@ -21,13 +21,17 @@ self.postMessage('Worker loaded successfully');
 ### index.js
 
 ```js
-const workerUrl = new URL("input-worker.js?esm", import.meta.url);
-const worker = new Worker(workerUrl, { type: "module" });
+//#region input/index.js
+var workerUrl = new URL("input-worker.js?esm", import.meta.url);
+var worker = new Worker(workerUrl, { type: "module" });
 worker.onmessage = (e) => console.log("[WORKER_OK]", e.data);
+//#endregion
 ```
 
 ### input-worker.js
 
 ```js
+//#region input/worker.js
 self.postMessage("Worker loaded successfully");
+//#endregion
 ```

@@ -26,13 +26,17 @@ self.postMessage('Editor worker loaded');
 ### editorWebWorkerMain.js
 
 ```js
+//#region input/lib/deeply/nested/services/editorWebWorkerMain.js
 self.postMessage("Editor worker loaded");
+//#endregion
 ```
 
 ### index.js
 
 ```js
-const workerUrl = new URL("editorWebWorkerMain.js?esm", import.meta.url);
-const worker = new Worker(workerUrl, { type: "module" });
+//#region input/index.js
+var workerUrl = new URL("editorWebWorkerMain.js?esm", import.meta.url);
+var worker = new Worker(workerUrl, { type: "module" });
 worker.onmessage = (e) => console.log("[WORKER_OK]", e.data);
+//#endregion
 ```

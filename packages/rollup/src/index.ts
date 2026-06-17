@@ -59,8 +59,6 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): VitePlugin {
   let workerEntries: Map<string, string>; // absolutePath -> entryName
   let emittedChunks: Map<string, { referenceId: string; originalQuery: string }>; // entryName -> { referenceId, originalQuery }
   let referenceIdToQuery: Map<string, string>; // referenceId -> originalQuery
-  // For isolated builds: referenceId -> build info (emitted as assets, built separately)
-  let pendingIsolatedBuilds: Map<string, { filePath: string; entryName: string }>;
   // For non-isolated builds with non-ESM output: referenceId -> build info (emitted as chunks, need recompilation)
   let pendingRecompilation: Map<string, { filePath: string; entryName: string }>;
   // Additional assets to emit (for multi-chunk isolated workers)
@@ -87,7 +85,6 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): VitePlugin {
       workerEntries = new Map();
       emittedChunks = new Map();
       referenceIdToQuery = new Map();
-      pendingIsolatedBuilds = new Map();
       pendingRecompilation = new Map();
       additionalAssets = [];
       ourReferenceIds = new Set();
@@ -101,7 +98,7 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): VitePlugin {
       return null;
     },
 
-    resolveFileUrl({ referenceId, fileName, relativePath }) {
+    resolveFileUrl({ referenceId, relativePath }) {
       // Only customize resolution for files we emitted
       if (!ourReferenceIds.has(referenceId)) {
         return null; // Let other plugins or default handling take over
@@ -128,41 +125,6 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): VitePlugin {
         return `export * from ${JSON.stringify(actualPath)};`;
       }
       return null;
-    },
-
-    async renderStart() {
-      // Build isolated workers and set their asset sources before rendering
-      for (const [referenceId, buildInfo] of pendingIsolatedBuilds) {
-        const esmBundle = await rollup({
-          input: buildInfo.filePath,
-          onwarn: (warning, warn) => {
-            if (warning.code === 'UNRESOLVED_IMPORT') return;
-            warn(warning);
-          },
-        });
-
-        const { output } = await esmBundle.generate({
-          format: 'es',
-          entryFileNames: '[name].js',
-          chunkFileNames: '[name]-[hash].js',
-        });
-
-        await esmBundle.close();
-
-        // Set the asset source to the built ESM code
-        const entryChunk = output.find(o => o.type === 'chunk' && o.isEntry);
-        if (entryChunk && entryChunk.type === 'chunk') {
-          this.setAssetSource(referenceId, entryChunk.code);
-        }
-
-        // Store additional chunks to emit later in generateBundle
-        for (const chunk of output) {
-          if (chunk.type === 'chunk' && !chunk.isEntry) {
-            additionalAssets.push({ fileName: chunk.fileName, source: chunk.code });
-          }
-        }
-      }
-      pendingIsolatedBuilds.clear();
     },
 
     async transform(code, id) {
@@ -233,12 +195,39 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): VitePlugin {
         let referenceId: string;
         
         if (bundleModulesIsolated) {
-          // Emit as asset - will be built separately, not part of main module graph
+          // Build the worker ESM eagerly so the asset source is available for emitFile.
+          // Rolldown (Vite v8+) requires the source to be present at emitFile time;
+          // the deferred renderStart + setAssetSource approach only works in Rollup.
+          const esmBundle = await rollup({
+            input: m.filePath,
+            onwarn: (warning, warn) => {
+              if (warning.code === 'UNRESOLVED_IMPORT') return;
+              warn(warning);
+            },
+          });
+          const { output } = await esmBundle.generate({
+            format: 'es',
+            entryFileNames: '[name].js',
+            chunkFileNames: '[name]-[hash].js',
+          });
+          await esmBundle.close();
+
+          const entryChunk = output.find(o => o.type === 'chunk' && o.isEntry);
+          const source = entryChunk?.type === 'chunk' ? entryChunk.code : '';
+
+          // Emit the asset with source immediately (compatible with both Rollup and Rolldown)
           referenceId = this.emitFile({
             type: 'asset',
             name: `${m.entryName}.js`,
+            source,
           });
-          pendingIsolatedBuilds.set(referenceId, { filePath: m.filePath, entryName: m.entryName });
+
+          // Queue additional sub-chunks from the worker bundle for emission in generateBundle
+          for (const chunk of output) {
+            if (chunk.type === 'chunk' && !chunk.isEntry) {
+              additionalAssets.push({ fileName: chunk.fileName, source: chunk.code });
+            }
+          }
         } else {
           // Emit as chunk - part of main module graph, may share code with main bundle
           referenceId = this.emitFile({
@@ -253,8 +242,10 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): VitePlugin {
         referenceIdToQuery.set(referenceId, m.originalQuery);
         emittedChunks.set(m.entryName, { referenceId, originalQuery: m.originalQuery });
 
-        // Replace with new URL using the resolved file URL
+        // Replace with new URL using the resolved file URL.
         // import.meta.ROLLUP_FILE_URL_<referenceId> will be replaced by resolveFileUrl hook
+        // in Rollup. In Rolldown (Vite v8+), resolveFileUrl is not supported; instead,
+        // renderChunk post-processes the resulting double-URL pattern.
         const replacement = `new URL(import.meta.ROLLUP_FILE_URL_${referenceId}, import.meta.url)`;
         newCode = newCode.slice(0, m.start) + replacement + newCode.slice(m.end);
       }
@@ -263,6 +254,43 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): VitePlugin {
         code: newCode,
         map: null, // TODO: Generate proper source map
       };
+    },
+
+    renderChunk(code, chunk) {
+      if (!ourReferenceIds.size) return null;
+
+      let newCode = code;
+      let changed = false;
+
+      for (const referenceId of ourReferenceIds) {
+        const workerFileName = this.getFileName(referenceId).replace(/\\/g, '/');
+        const chunkDir = path.posix.dirname(chunk.fileName.replace(/\\/g, '/'));
+        const relPath = path.posix.relative(chunkDir, workerFileName);
+
+        if (!newCode.includes(relPath)) continue;
+
+        // Rolldown (Vite v8+) does not call resolveFileUrl; instead it replaces
+        // import.meta.ROLLUP_FILE_URL_xxx with new URL("filename", import.meta.url).href,
+        // producing a redundant double-URL pattern that also strips the ?esm suffix:
+        //   new URL(new URL("filename", import.meta.url).href, import.meta.url)
+        // Replace this with the correct single-URL form, preserving the ?esm suffix.
+        const escapedRelPath = relPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const doubleUrlRegex = new RegExp(
+          `new URL\\(new URL\\(["']${escapedRelPath}["'],\\s*[^)]+\\)\\.href,\\s*[^)]+\\)`,
+          'g'
+        );
+
+        const originalQuery = referenceIdToQuery.get(referenceId) || ESM_QUERY;
+        const suffix = stripEsmQuery ? stripEsmFromQuery(originalQuery) : originalQuery;
+
+        const newResult = newCode.replace(doubleUrlRegex, `new URL("${relPath}${suffix}", import.meta.url)`);
+        if (newResult !== newCode) {
+          newCode = newResult;
+          changed = true;
+        }
+      }
+
+      return changed ? { code: newCode, map: null } : null;
     },
 
     async generateBundle(outputOpts, bundle) {
