@@ -31,9 +31,6 @@
   ],
   "author": "",
   "license": "MIT",
-  "overrides": {
-    "js-yaml": "4.2.0"
-  },
   "devDependencies": {
     "@parcel/config-default": "^2.15.0",
     "@parcel/core": "^2.15.0",
