@@ -2,6 +2,15 @@
   "name": "@vscode/rollup-plugin-esm-url",
   "version": "1.0.0",
   "description": "Rollup plugin for handling ?esm URL imports",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/microsoft/esm-url-bundler-plugins.git",
+    "directory": "packages/rollup"
+  },
+  "homepage": "https://github.com/microsoft/esm-url-bundler-plugins#readme",
+  "bugs": {
+    "url": "https://github.com/microsoft/esm-url-bundler-plugins/issues"
+  },
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
   "types": "./dist/cjs/index.d.ts",
