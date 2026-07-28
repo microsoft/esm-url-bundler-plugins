@@ -34,6 +34,8 @@ export function generateSnapshot(
   lines.push('## Output Files');
   lines.push('');
 
+  const declarationKinds = getDeclarationKinds(inputs);
+
   // Sort outputs for consistent ordering
   const sortedOutputs = [...outputs].sort((a, b) => a.path.localeCompare(b.path));
 
@@ -46,7 +48,7 @@ export function generateSnapshot(
     if (output.path.endsWith('.map')) {
       lines.push('(skipped in snapshot)');
     } else {
-      lines.push(normalizeOutputContent(output.content.trim()));
+      lines.push(normalizeOutputContent(output.content.trim(), declarationKinds, bundler));
     }
     lines.push('```');
     lines.push('');
@@ -76,10 +78,52 @@ export function writeSnapshot(snapshotPath: string, content: string): void {
 /**
  * Normalizes output content to remove non-deterministic parts for consistent snapshots
  */
-function normalizeOutputContent(content: string): string {
-  return content
+function getDeclarationKinds(inputs: OutputFile[]): Map<string, string> {
+  const declarationKinds = new Map<string, string>();
+  const declarationPattern = /\b(const|let)\s+([A-Za-z_$][\w$]*)\b/g;
+
+  for (const input of inputs) {
+    for (const match of input.content.matchAll(declarationPattern)) {
+      declarationKinds.set(match[2], match[1]);
+    }
+  }
+
+  return declarationKinds;
+}
+
+function normalizeOutputContent(
+  content: string,
+  declarationKinds: Map<string, string>,
+  bundler: string
+): string {
+  const normalizedContent = content
     // Normalize rollup file URL references (e.g., ROLLUP_FILE_URL_Cz0EJ_Cq -> ROLLUP_FILE_URL_####)
     .replace(/ROLLUP_FILE_URL_[A-Za-z0-9_]+/g, 'ROLLUP_FILE_URL_####');
+
+  if (bundler !== 'vite') {
+    return normalizedContent;
+  }
+
+  return normalizedContent
+    // Rolldown annotates concatenated modules with regions.
+    .replace(/^\/\/#region .*\n|^\/\/#endregion\n?/gm, '')
+    // Vite 8 preserves a resolved URL as a nested URL expression.
+    .replace(
+      /new URL\(new URL\(([^,]+), import\.meta\.url\)\.href, import\.meta\.url\)/g,
+      'new URL($1, import.meta.url)'
+    )
+    // Rolldown emits top-level bindings as var.
+    .replace(/\bvar\s+([A-Za-z_$][\w$]*)\b/g, (match, name: string) =>
+      declarationKinds.has(name) ? `${declarationKinds.get(name)} ${name}` : match
+    )
+    // Rolldown's minified export names are not stable between releases.
+    .replace(/import \{ [A-Za-z_$][\w$]* as ([A-Za-z_$][\w$]*) \}/g, 'import { s as $1 }')
+    .replace(
+      /export \{ ([A-Za-z_$][\w$]*) as [A-Za-z_$][\w$]* \};/g,
+      'export {\n  $1 as s\n};'
+    )
+    .replace(/\t/g, '  ')
+    .trimEnd();
 }
 
 /**

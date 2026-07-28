@@ -70,11 +70,15 @@ function runVite(testDir: string): Promise<void> {
 }
 
 function extractViteError(message: string): string {
-  // Extract the plugin error from vite output
-  // Look for [esm-url-plugin] or [plugin esm-url-plugin] prefix
-  const match = message.match(/\[esm-url-plugin\].*?(?=\nfile:|$)/s);
+  const match = message.match(/RolldownError:\s*([^\n]+)/);
   if (match) {
-    return match[0].trim();
+    return `[esm-url-plugin] ${match[1]}`;
+  }
+
+  // Extract the plugin error from Vite 7 output.
+  const legacyMatch = message.match(/\[esm-url-plugin\].*?(?=\nfile:|$)/s);
+  if (legacyMatch) {
+    return legacyMatch[0].trim();
   }
   return message;
 }
