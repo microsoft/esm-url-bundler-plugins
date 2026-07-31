@@ -59,8 +59,6 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): VitePlugin {
   let workerEntries: Map<string, string>; // absolutePath -> entryName
   let emittedChunks: Map<string, { referenceId: string; originalQuery: string }>; // entryName -> { referenceId, originalQuery }
   let referenceIdToQuery: Map<string, string>; // referenceId -> originalQuery
-  // For isolated builds: referenceId -> build info (emitted as assets, built separately)
-  let pendingIsolatedBuilds: Map<string, { filePath: string; entryName: string }>;
   // For non-isolated builds with non-ESM output: referenceId -> build info (emitted as chunks, need recompilation)
   let pendingRecompilation: Map<string, { filePath: string; entryName: string }>;
   // Additional assets to emit (for multi-chunk isolated workers)
@@ -73,6 +71,7 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): VitePlugin {
   
   // In Vite serve mode, ESM modules are transpiled on-the-fly, so no need to emit files or rewrite URLs
   let isServeMode = false;
+  let isVite = false;
 
   return {
     name: 'esm-url-plugin',
@@ -80,6 +79,7 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): VitePlugin {
     // Vite-specific hook: detect serve mode (dev server)
     configResolved(config) {
       isServeMode = config.command === 'serve';
+      isVite = true;
     },
 
     buildStart() {
@@ -87,7 +87,6 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): VitePlugin {
       workerEntries = new Map();
       emittedChunks = new Map();
       referenceIdToQuery = new Map();
-      pendingIsolatedBuilds = new Map();
       pendingRecompilation = new Map();
       additionalAssets = [];
       ourReferenceIds = new Set();
@@ -109,7 +108,8 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): VitePlugin {
       // Return the relative path, optionally with ?esm preserved for re-bundling
       const originalQuery = referenceIdToQuery.get(referenceId) || ESM_QUERY;
       const suffix = stripEsmQuery ? stripEsmFromQuery(originalQuery) : originalQuery;
-      return `'${relativePath}${suffix}'`;
+      const fileUrl = `${relativePath}${suffix}`;
+      return isVite ? JSON.stringify(fileUrl) : `'${fileUrl}'`;
     },
 
     async resolveId(source, importer) {
@@ -128,41 +128,6 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): VitePlugin {
         return `export * from ${JSON.stringify(actualPath)};`;
       }
       return null;
-    },
-
-    async renderStart() {
-      // Build isolated workers and set their asset sources before rendering
-      for (const [referenceId, buildInfo] of pendingIsolatedBuilds) {
-        const esmBundle = await rollup({
-          input: buildInfo.filePath,
-          onwarn: (warning, warn) => {
-            if (warning.code === 'UNRESOLVED_IMPORT') return;
-            warn(warning);
-          },
-        });
-
-        const { output } = await esmBundle.generate({
-          format: 'es',
-          entryFileNames: '[name].js',
-          chunkFileNames: '[name]-[hash].js',
-        });
-
-        await esmBundle.close();
-
-        // Set the asset source to the built ESM code
-        const entryChunk = output.find(o => o.type === 'chunk' && o.isEntry);
-        if (entryChunk && entryChunk.type === 'chunk') {
-          this.setAssetSource(referenceId, entryChunk.code);
-        }
-
-        // Store additional chunks to emit later in generateBundle
-        for (const chunk of output) {
-          if (chunk.type === 'chunk' && !chunk.isEntry) {
-            additionalAssets.push({ fileName: chunk.fileName, source: chunk.code });
-          }
-        }
-      }
-      pendingIsolatedBuilds.clear();
     },
 
     async transform(code, id) {
@@ -233,12 +198,36 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): VitePlugin {
         let referenceId: string;
         
         if (bundleModulesIsolated) {
-          // Emit as asset - will be built separately, not part of main module graph
+          const esmBundle = await rollup({
+            input: m.filePath,
+            onwarn: (warning, warn) => {
+              if (warning.code === 'UNRESOLVED_IMPORT') return;
+              warn(warning);
+            },
+          });
+          const { output } = await esmBundle.generate({
+            format: 'es',
+            entryFileNames: '[name].js',
+            chunkFileNames: '[name]-[hash].js',
+          });
+          await esmBundle.close();
+
+          const entryChunk = output.find(o => o.type === 'chunk' && o.isEntry);
+          if (!entryChunk || entryChunk.type !== 'chunk') {
+            this.error(`Unable to generate isolated worker '${m.filePath}'.`);
+          }
+
           referenceId = this.emitFile({
             type: 'asset',
             name: `${m.entryName}.js`,
+            source: entryChunk.code,
           });
-          pendingIsolatedBuilds.set(referenceId, { filePath: m.filePath, entryName: m.entryName });
+
+          for (const chunk of output) {
+            if (chunk.type === 'chunk' && !chunk.isEntry) {
+              additionalAssets.push({ fileName: chunk.fileName, source: chunk.code });
+            }
+          }
         } else {
           // Emit as chunk - part of main module graph, may share code with main bundle
           referenceId = this.emitFile({
@@ -253,8 +242,7 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): VitePlugin {
         referenceIdToQuery.set(referenceId, m.originalQuery);
         emittedChunks.set(m.entryName, { referenceId, originalQuery: m.originalQuery });
 
-        // Replace with new URL using the resolved file URL
-        // import.meta.ROLLUP_FILE_URL_<referenceId> will be replaced by resolveFileUrl hook
+        // Replace with new URL using the resolved file URL.
         const replacement = `new URL(import.meta.ROLLUP_FILE_URL_${referenceId}, import.meta.url)`;
         newCode = newCode.slice(0, m.start) + replacement + newCode.slice(m.end);
       }
@@ -263,6 +251,25 @@ export function esmUrlPlugin(options: EsmUrlPluginOptions = {}): VitePlugin {
         code: newCode,
         map: null, // TODO: Generate proper source map
       };
+    },
+
+    renderChunk(code) {
+      if (!isVite) {
+        return null;
+      }
+
+      let transformedCode = code;
+      for (const [referenceId, originalQuery] of referenceIdToQuery) {
+        const suffix = stripEsmQuery ? stripEsmFromQuery(originalQuery) : originalQuery;
+        if (!suffix) continue;
+
+        const fileName = this.getFileName(referenceId);
+        const viteUrl = `new URL(new URL(${JSON.stringify(fileName)}, import.meta.url).href, import.meta.url)`;
+        const preservedUrl = `new URL(${JSON.stringify(`${fileName}${suffix}`)}, import.meta.url)`;
+        transformedCode = transformedCode.split(viteUrl).join(preservedUrl);
+      }
+
+      return transformedCode === code ? null : { code: transformedCode, map: null };
     },
 
     async generateBundle(outputOpts, bundle) {
