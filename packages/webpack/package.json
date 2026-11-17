@@ -2,6 +2,15 @@
   "name": "@vscode/esm-url-webpack-plugin",
   "version": "1.0.0",
   "description": "Webpack 5 plugin for handling ?esm URL imports",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/microsoft/esm-url-bundler-plugins.git",
+    "directory": "packages/webpack"
+  },
+  "homepage": "https://github.com/microsoft/esm-url-bundler-plugins/tree/main/packages/webpack#readme",
+  "bugs": {
+    "url": "https://github.com/microsoft/esm-url-bundler-plugins/issues"
+  },
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
   "types": "./dist/cjs/index.d.ts",
@@ -18,7 +27,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE"
   ],
   "scripts": {
     "build": "rollup -c rollup.config.mjs",
