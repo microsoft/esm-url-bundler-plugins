@@ -37,6 +37,7 @@ extends:
   parameters:
     npmPackages:
       - name: esm-url-webpack-plugin
+        skipAPIScan: ${{ not(or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), startsWith(variables['Build.SourceBranch'], 'refs/heads/release/'))) }}
         workingDirectory: $(Build.SourcesDirectory)/packages/webpack
         testPlatforms: []
         buildSteps:
@@ -63,6 +64,7 @@ extends:
         publishRequiresApproval: false
 
       - name: rollup-plugin-esm-url
+        skipAPIScan: ${{ not(or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), startsWith(variables['Build.SourceBranch'], 'refs/heads/release/'))) }}
         workingDirectory: $(Build.SourcesDirectory)/packages/rollup
         testPlatforms: []
         buildSteps:
@@ -89,6 +91,7 @@ extends:
         publishRequiresApproval: false
 
       - name: esbuild-plugin-esm-url
+        skipAPIScan: ${{ not(or(eq(variables['Build.SourceBranch'], 'refs/heads/main'), startsWith(variables['Build.SourceBranch'], 'refs/heads/release/'))) }}
         workingDirectory: $(Build.SourcesDirectory)/packages/esbuild
         testPlatforms: []
         buildSteps:
